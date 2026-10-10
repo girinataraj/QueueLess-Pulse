@@ -9,13 +9,13 @@ A multi-business virtual queue platform for clinics, salons, banks, offices and 
 - **Owner:** registration/login, multiple business profiles, branches, service names/prefixes/fallback durations/counter labels, activation, secure staff creation or one-time invitations, permission assignment/revocation, business/branch/service QR downloads, live counts, actual timing averages, seven-day throughput and paginated completed/skipped audit history.
 - **Reception:** public display per business/branch, current serving token/service/counter, automatic refresh, full-screen control and connection status. No private recovery tokens, identities or customer ownership IDs are returned.
 
-Shared navy/teal/off-white design; mobile layouts; no frontend framework or paid service required. Single active ticket per service. QR codes open scoped entry pages and were decoded during real browser verification. Approximate queue waits use configured service duration; historical timing averages use recorded call/finish timestamps and show no-data explicitly.
+Shared navy/teal/off-white design and mobile layouts. The React + strict TypeScript interface runs at `/app/`; the original Jinja interface stays available at `/` for rollback. Single active ticket per service. QR codes open scoped entry pages and were decoded during real browser verification. Approximate queue waits use configured service duration; historical timing averages use recorded call/finish timestamps and show no-data explicitly.
 
 ## Local development — Windows PowerShell
 
 ### Preview with the existing environment
 
-The completion gate passed **73 tests, 0 failed, 0 skipped**. Hosting is paused for local UI inspection. From this workspace, run:
+PR #1 established a green **74-test baseline** after the SQLite browser-fixture correction. The React migration adds API, component and PostgreSQL browser verification; see [Frontend verification](docs/FRONTEND_VERIFICATION.md) for current exact results. Hosting is paused for local UI inspection. From this workspace, run:
 
 Local execution logs, JUnit files and screenshots remain in `evidence/`, which is excluded from Git publishing. Reports preserve the verified results and commands; CI can generate fresh evidence as downloadable artifacts.
 
@@ -117,7 +117,7 @@ $env:PLAYWRIGHT_EXECUTABLE_PATH='C:\Program Files (x86)\Microsoft\Edge\Applicati
 & .\.venv\Scripts\python.exe -m pip_audit --format json --output evidence/universal-dependency-audit.json
 ```
 
-The PostgreSQL database must have a name ending `_test`; every integration case creates/removes only a random schema there. **Never set TEST_DATABASE_URL to production.** Browser tests launch their own server with isolated test fixtures. CI runs the same suite with PostgreSQL and Chromium; the workflow itself is provided but is not claimed to have run on GitHub until pushed. Final execution counts/failures/retests are in TESTING_REPORT.md; screenshots/JUnit/advisory evidence is in `evidence/`.
+The PostgreSQL database must have a name ending `_test`; every integration case creates/removes only a random schema there. **Never set TEST_DATABASE_URL to production.** Browser tests launch their own server with isolated test fixtures. CI runs the same suite with PostgreSQL and Chromium; the merged baseline workflow has passed on GitHub; migration run results are recorded in the frontend verification report. Final execution counts/failures/retests are in TESTING_REPORT.md; screenshots/JUnit/advisory evidence is in `evidence/`.
 
 ## Production deployment — after the local completion gate
 
@@ -126,7 +126,7 @@ No hosting has been performed yet. GitHub/Neon/Render account access and the rea
 1. Push this authoritative root to a GitHub repository. Exclude `.env`, `.venv`, `.tmp`, `instance`, databases and `QueueLess_MVP`. Keep migrations, root templates/static files, tests, CI and reports. Select this app.py directory as Render Root Directory.
 2. Create/select a free Neon PostgreSQL database. Preserve `sslmode=require` in the URL. Set secrets through local environment/Render settings; never paste credentials into source, logs or commits.
 3. Initialize a fresh database with `python -m flask --app app initdb`, or back up and apply `upgrade-db --apply` to existing data. Run these using the local venv with the intended DATABASE_URL, because Render Free remote shell access is unavailable.
-4. Configure Render Python Web Service **Free**: build `python -m pip install pip==26.2.1 -r requirements.txt`; start `gunicorn --workers 2 --threads 4 --bind 0.0.0.0:$PORT app:app`; health path `/health`. `render.yaml` provides the same configuration.
+4. The restricted-demo `render.yaml` builds Python and the pinned React frontend through `bash scripts/render-build.sh`; starts Gunicorn with two workers/four threads, loopback-independent `$PORT` binding and logs that omit request URLs/auth headers; uses `/health`; and keeps automatic deployment off. Approve the PR before merging/deploying. See [release runbook](docs/RELEASE_RUNBOOK.md).
 5. Set `PYTHON_VERSION=3.12.14`, `APP_ENV=production`, `DATABASE_URL`, generated `SECRET_KEY` (at least 32 characters) and `BUSINESS_TIMEZONE=Asia/Kolkata` (legacy/default context only; new businesses configure their own timezone). Set `PUBLIC_BASE_URL` to the actual HTTPS origin after Render assigns it. Set `TRUSTED_HOSTS` to accepted hostnames appropriate for public traffic and health checks. These settings ensure canonical QR/invitation URLs and optional Host-header validation. PostgreSQL URLs normalize to the declared psycopg2 driver; production rejects SQLite and absent/short secrets.
 6. Register the initial owner through HTTPS and configure business/branch/service/team. For migrated history use the private create-owner CLI. No default production credentials exist.
 7. Verify the actual hosted `/health`, all four workflows across separate browsers, two-business access denial, persistence after restart, mobile layouts, staff/main PWA manifests, HTTPS worker registration/install prompt and private cache policy. Only then describe hosting as successful.
@@ -139,4 +139,47 @@ Sources: [Render Flask](https://render.com/docs/deploy-flask), [Render Free](htt
 
 Main manifest starts at `/`; staff manifest starts at `/staff/dashboard`. Icons are 192/512 PNGs. The root service worker caches **only** CSS and those two icons, cleans obsolete caches and never stores staff, owner, ticket, invitation, HTML or API responses. Live operations require a network. Local browser tests verify manifests/worker/static cache/mobile workflows; actual hosted install prompts and Android behavior require HTTPS verification.
 
-This is a complete shortlist/demo MVP, not a certified critical-service product. Multi-counter operation, APK packaging, payments, push subscriptions and personal customer identity collection are outside scope. Login throttling, backups, monitoring, abuse controls and cloud outage/load testing remain operational hardening tasks before wider real-world use.
+This is a complete shortlist/demo MVP, not a certified critical-service product. Multi-counter operation, APK packaging, payments, push subscriptions and personal customer identity collection are outside scope. Database-backed authentication/queue rate limiting is now implemented. Backups, monitoring, abuse controls and cloud outage/load testing remain operational hardening tasks before wider real-world use.
+
+## React frontend preview and architecture
+
+The migration is additive: `/app/*` serves the React build; `/api/v1/*` adapts the same audited Flask handlers. Models, PostgreSQL locks, migrations and tenant checks remain authoritative. Original templates, QR links and routes remain available. See [migration audit](docs/FRONTEND_MIGRATION_PLAN.md), [API contracts](docs/API_CONTRACT.md) and [verification/limitations](docs/FRONTEND_VERIFICATION.md).
+
+Use Node 24 and pnpm 11.25.0. On this machine the installed bundled tools can build without changing system PATH permanently:
+
+```powershell
+Set-Location -LiteralPath 'E:\Internship\New folder\DR'
+$env:PATH='C:\Users\girin\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin;'+$env:PATH
+$pnpm='C:\Users\girin\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback\pnpm.cmd'
+& $pnpm --dir frontend install --frozen-lockfile --strict-peer-dependencies --store-dir .tmp/pnpm-store
+& $pnpm --dir frontend run typecheck
+& $pnpm --dir frontend run lint
+& $pnpm --dir frontend run test
+& $pnpm --dir frontend run build
+$env:APP_ENV='development'
+Remove-Item Env:RENDER -ErrorAction SilentlyContinue
+$env:DATABASE_URL='sqlite:///universal-preview.db'
+$env:SECRET_KEY=(& .\.venv\Scripts\python.exe -c 'import secrets; print(secrets.token_hex(32))')
+$env:PUBLIC_BASE_URL='http://127.0.0.1:5000'
+$env:TRUSTED_HOSTS='127.0.0.1,localhost'
+& .\.venv\Scripts\python.exe -m flask --app app initdb
+& .\.venv\Scripts\python.exe -m flask --app app run --host 127.0.0.1 --port 5000
+```
+
+Then inspect [React Customer](http://127.0.0.1:5000/app/), [React Staff](http://127.0.0.1:5000/app/staff/login), [React Owner registration](http://127.0.0.1:5000/app/owner/register), [React Owner](http://127.0.0.1:5000/app/owner) and [React Display directory](http://127.0.0.1:5000/app/display). Configure your business/branch/service and staff permissions in the owner workspace. Use separate browser profiles for each role. No demo passwords or accounts are created. Existing local preview data can be reused; do not run the unrelated local `seed.py`. SQLite preview is single-process only.
+
+For hot reload, keep Flask on 5000, and run `pnpm --dir frontend dev` in a second terminal. Open `http://127.0.0.1:5173/app/`. Vite proxies API, authenticated QR, icons, manifest and the single root service worker to Flask. Set PUBLIC_BASE_URL to the frontend origin if generating QR/invitation links for that development session; use the Flask-served production build for the closest one-origin preview.
+
+For a later Linux production build, install the pinned frontend with `pnpm --dir frontend install --frozen-lockfile --strict-peer-dependencies`, then `pnpm --dir frontend run build`, and install Python requirements. Serve `app:app` with the existing Gunicorn command and real production environment. Flask serves `frontend/dist` assets and deep links from that one origin; no frontend secret is compiled into JavaScript. CI smoke-tests production PostgreSQL configuration with two Gunicorn workers and four threads. No cloud deployment is performed by this migration. The updated Render blueprint supplies the reproducible frontend build, production configuration and restricted-demo gate; account-specific and hosted workflow verification still precede any live claim.
+
+React uses `/app.webmanifest` (start/scope `/app/`) and the existing root worker. Only public CSS/icons are cached; confidential responses and navigation remain network-only. Browser manifests, registration and cache policy are tested; physical Android installation and hosted HTTPS prompts remain deployment-stage checks.
+
+## Restricted demonstration release
+
+The authorized audience is technical evaluators, project reviewers and privately invited testers using fictional profiles and synthetic tickets only. A formal legal operator, privacy contact and reviewed terms/retention policy are unresolved. Real customer data, unrestricted public registration and general commercial use are launch-blocked. Drafts in [docs/legal](docs/legal) describe actual behavior without compliance claims.
+
+`DEMO_MODE=true` requires environment-supplied `DEMO_ACCESS_USER` and `DEMO_ACCESS_PASSWORD` (at least 32 characters). This outer HTTP Basic gate protects both UIs/APIs/assets/registration, with `/health` as the sole GET/HEAD exception; it grants no application role and bypasses no CSRF check. Share evaluator access privately over HTTPS, never through source or public demo credentials. The React session shows a factual synthetic-data notice. Production also requires the existing strong SECRET_KEY, PostgreSQL, Secure/HttpOnly/SameSite cookies and no debug mode.
+
+Authentication endpoints share a per-address limit of 30 POST attempts per five-minute fixed window; legacy/React ticket creation share 120 POST attempts per minute. HMAC identifiers and atomic database counters are shared by Gunicorn workers; limits return 429/Retry-After and database failure fails closed as 503. Forwarded headers are ignored locally (`RATE_LIMIT_TRUSTED_PROXY_HOPS=0`). The Render configuration sets one trusted appended hop, which must be checked against the live edge chain before reviewer access; never trust an arbitrary client-controlled first header value. Limits include successful requests and retries and may affect shared networks near the threshold; choose any tuning through reviewed environment settings. They do not constitute comprehensive DDoS protection.
+
+Fresh `initdb` creates all tables without accounts. Existing PostgreSQL upgrades add `004_rate_limits.sql` through the backed-up `upgrade-db --apply` path; it adds only the limiter table/index and preserves identities, queues and audit history. No production database change is performed in this task before deployment approval.

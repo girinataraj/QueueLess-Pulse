@@ -28,3 +28,9 @@ htmlcov/
 .vscode/
 .idea/
 QueueLess_MVP/
+node_modules/
+frontend/dist/
+frontend/coverage/
+core
+core.*
+seed.py

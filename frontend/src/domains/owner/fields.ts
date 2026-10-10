@@ -1,0 +1,6 @@
+import type { Field } from '../../components/form';
+export const businessFields: Field[] = [{name:'name',label:'Business name',required:true,max:128},{name:'category',label:'Business type',required:true,max:40},{name:'timezone',label:'Business timezone',required:true,max:64,hint:'Use an IANA timezone. Changes are locked after ticket history.'},{name:'description',label:'About the business',type:'textarea',max:1000}];
+export const slugField: Field = {name:'slug',label:'Business URL',required:true,max:80,pattern:'^[a-z0-9]+(-[a-z0-9]+)*$',hint:'Lowercase letters, numbers and hyphens.'};
+export const branchFields: Field[] = [{name:'name',label:'Branch name',required:true,max:128},{name:'address',label:'Address',max:300}];
+export const activeField: Field = {name:'is_active',label:'Accept new customers',type:'checkbox'};
+export const serviceFields: Field[] = [{name:'name',label:'Service name',required:true,max:128},{name:'prefix',label:'Token prefix',required:true,max:6,pattern:'^[A-Za-z0-9]{1,6}$'},{name:'average_minutes',label:'Fallback duration (minutes)',type:'number',required:true,min:1,max:120},{name:'counter_label',label:'Counter label (optional)',max:40},{name:'description',label:'Description',type:'textarea',max:256},activeField];

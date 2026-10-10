@@ -1,0 +1,679 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Business": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "category",
+        "description",
+        "timezone",
+        "is_active"
+      ],
+      "additionalProperties": false
+    },
+    "Branch": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "business_id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "business_id",
+        "name",
+        "address",
+        "is_active"
+      ],
+      "additionalProperties": false
+    },
+    "Service": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "branch_id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "average_minutes": {
+          "type": "integer"
+        },
+        "counter_label": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "branch_id",
+        "name",
+        "description",
+        "prefix",
+        "average_minutes",
+        "counter_label",
+        "is_active"
+      ],
+      "additionalProperties": false
+    },
+    "Session": {
+      "type": "object",
+      "properties": {
+        "csrf_token": {
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "email": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "username",
+                "email"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "memberships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "business_id": {
+                "type": "integer"
+              },
+              "role": {
+                "enum": [
+                  "owner",
+                  "staff"
+                ]
+              }
+            },
+            "required": [
+              "business_id",
+              "role"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "demo_mode": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "csrf_token",
+        "user",
+        "memberships",
+        "demo_mode"
+      ],
+      "additionalProperties": false
+    },
+    "BusinessList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Business"
+      }
+    },
+    "PublicBusiness": {
+      "type": "object",
+      "properties": {
+        "business": {
+          "$ref": "#/$defs/Business"
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Branch"
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Service"
+          }
+        }
+      },
+      "required": [
+        "business",
+        "branches",
+        "services"
+      ],
+      "additionalProperties": false
+    },
+    "Status": {
+      "enum": [
+        "WAITING",
+        "CALLED",
+        "COMPLETED",
+        "SKIPPED",
+        "CANCELLED"
+      ]
+    },
+    "Ticket": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "display_number": {
+          "type": "string"
+        },
+        "people_ahead": {
+          "type": "integer"
+        },
+        "estimated_time": {
+          "type": "integer"
+        },
+        "currently_called": {
+          "type": "string"
+        },
+        "service_name": {
+          "type": "string"
+        },
+        "branch_name": {
+          "type": "string"
+        },
+        "business_name": {
+          "type": "string"
+        },
+        "counter_label": {
+          "type": "string"
+        },
+        "business_date": {
+          "type": "string"
+        },
+        "can_cancel": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "token",
+        "status",
+        "display_number",
+        "people_ahead",
+        "estimated_time",
+        "currently_called",
+        "service_name",
+        "branch_name",
+        "business_name",
+        "counter_label",
+        "business_date",
+        "can_cancel"
+      ],
+      "additionalProperties": false
+    },
+    "TicketList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Ticket"
+      }
+    },
+    "QueueTicket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number"
+      ],
+      "additionalProperties": false
+    },
+    "Queue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "business": {
+          "type": "string"
+        },
+        "counter": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "waiting": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QueueTicket"
+          }
+        },
+        "called": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QueueTicket"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "branch",
+        "business",
+        "counter",
+        "active",
+        "waiting",
+        "called"
+      ],
+      "additionalProperties": false
+    },
+    "QueueList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Queue"
+      }
+    },
+    "Metrics": {
+      "type": "object",
+      "properties": {
+        "waiting": {
+          "type": "integer"
+        },
+        "called": {
+          "type": "integer"
+        },
+        "completed": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "cancelled": {
+          "type": "integer"
+        },
+        "average_wait": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "average_duration": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wait_samples": {
+          "type": "integer"
+        },
+        "duration_samples": {
+          "type": "integer"
+        },
+        "throughput": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "completed": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "date",
+              "completed"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "waiting",
+        "called",
+        "completed",
+        "skipped",
+        "cancelled",
+        "average_wait",
+        "average_duration",
+        "wait_samples",
+        "duration_samples",
+        "throughput"
+      ],
+      "additionalProperties": false
+    },
+    "Member": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "username": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "owner",
+            "staff"
+          ]
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "service_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "role",
+        "is_active",
+        "service_ids"
+      ],
+      "additionalProperties": false
+    },
+    "OwnerBusiness": {
+      "type": "object",
+      "properties": {
+        "business": {
+          "$ref": "#/$defs/Business"
+        },
+        "branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Branch"
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Service"
+          }
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Member"
+          }
+        },
+        "stats": {
+          "$ref": "#/$defs/Metrics"
+        }
+      },
+      "required": [
+        "business",
+        "branches",
+        "services",
+        "members",
+        "stats"
+      ],
+      "additionalProperties": false
+    },
+    "History": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer"
+        },
+        "pages": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "service": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/$defs/Status"
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string"
+                    },
+                    "at": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "number",
+              "date",
+              "service",
+              "branch",
+              "status",
+              "events"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "page",
+        "pages",
+        "total",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "DisplayList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "integer"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          },
+          "counter_label": {
+            "type": "string"
+          },
+          "currently_called": {
+            "type": "string"
+          },
+          "waiting_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "service_id",
+          "service_name",
+          "branch_name",
+          "counter_label",
+          "currently_called",
+          "waiting_count"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "Action": {
+      "type": "object",
+      "properties": {
+        "resource_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource_path"
+      ],
+      "additionalProperties": false
+    },
+    "Invitation": {
+      "type": "object",
+      "properties": {
+        "business_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_name"
+      ],
+      "additionalProperties": false
+    },
+    "InviteCreated": {
+      "type": "object",
+      "properties": {
+        "business_name": {
+          "type": "string"
+        },
+        "invite_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_name",
+        "invite_url"
+      ],
+      "additionalProperties": false
+    },
+    "ApiError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
