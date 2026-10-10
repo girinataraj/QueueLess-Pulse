@@ -5,13 +5,29 @@ import pytest
 from werkzeug.serving import make_server
 
 @pytest.fixture
-def live_server(application):
-    server = make_server('127.0.0.1', 0, application, threaded=True)
+def live_server(browser_application):
+    server = make_server('127.0.0.1', 0, browser_application, threaded=True)
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     yield f'http://127.0.0.1:{server.server_port}'
     server.shutdown()
+    server.server_close()
     thread.join(timeout=5)
+
+@pytest.mark.browser
+def test_browser_database_connections_are_independent(browser_application):
+    from models import db
+    from sqlalchemy import text
+    with browser_application.app_context():
+        with db.engine.connect() as first, db.engine.connect() as second:
+            # Polling requests must not concurrently share a SQLite connection
+            # or let one request roll back another request's transaction.
+            assert first.connection.driver_connection is not second.connection.driver_connection
+            first.execute(text("INSERT INTO staff (username, password_hash, is_active) VALUES ('uncommitted', 'test-only', 1)"))
+            assert second.scalar(text("SELECT count(*) FROM staff WHERE username = 'uncommitted'")) == 0
+            second.rollback()
+            first.commit()
+            assert second.scalar(text("SELECT count(*) FROM staff WHERE username = 'uncommitted'")) == 1
 
 @pytest.mark.browser
 @pytest.mark.parametrize('viewport', [{'width':1280,'height':900},{'width':390,'height':844}],ids=['desktop','mobile'])
