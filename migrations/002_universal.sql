@@ -1,0 +1,36 @@
+-- Upgrade the audited single-business root schema; execute in one transaction.
+LOCK TABLE staff, services, tickets, ticket_events IN ACCESS EXCLUSIVE MODE;
+CREATE TABLE businesses (id serial PRIMARY KEY, slug varchar(80) UNIQUE NOT NULL, name varchar(128) NOT NULL, category varchar(40) NOT NULL DEFAULT 'Service center', description varchar(1000) NOT NULL DEFAULT '', timezone varchar(64) NOT NULL DEFAULT 'Asia/Kolkata', is_active boolean NOT NULL DEFAULT true);
+CREATE TABLE branches (id serial PRIMARY KEY, business_id integer NOT NULL REFERENCES businesses(id), name varchar(128) NOT NULL, address varchar(300) NOT NULL DEFAULT '', is_active boolean NOT NULL DEFAULT true, CONSTRAINT uq_branch_name UNIQUE(business_id,name));
+CREATE INDEX ix_branches_business_id ON branches(business_id);
+ALTER TABLE staff ADD COLUMN email varchar(254) UNIQUE;
+ALTER TABLE staff ADD COLUMN is_active boolean NOT NULL DEFAULT true;
+CREATE TABLE memberships (id serial PRIMARY KEY,business_id integer NOT NULL REFERENCES businesses(id),staff_id integer NOT NULL REFERENCES staff(id),role varchar(10) NOT NULL,is_active boolean NOT NULL DEFAULT true,CONSTRAINT uq_membership UNIQUE(business_id,staff_id),CONSTRAINT ck_membership_role CHECK(role IN ('owner','staff')));
+CREATE INDEX ix_memberships_business_id ON memberships(business_id);
+CREATE INDEX ix_memberships_staff_id ON memberships(staff_id);
+CREATE TABLE service_assignments (id serial PRIMARY KEY,membership_id integer NOT NULL REFERENCES memberships(id),service_id integer NOT NULL REFERENCES services(id),CONSTRAINT uq_service_assignment UNIQUE(membership_id,service_id));
+CREATE INDEX ix_service_assignments_service_id ON service_assignments(service_id);
+CREATE TABLE staff_invites (id serial PRIMARY KEY,business_id integer NOT NULL REFERENCES businesses(id),token_hash varchar(64) UNIQUE NOT NULL,expires_at timestamptz NOT NULL,used_at timestamptz,created_by integer NOT NULL REFERENCES staff(id));
+CREATE TABLE admin_events (id serial PRIMARY KEY,business_id integer NOT NULL REFERENCES businesses(id),staff_id integer NOT NULL REFERENCES staff(id),action varchar(64) NOT NULL,details varchar(300) NOT NULL DEFAULT '',timestamp timestamptz NOT NULL);
+CREATE INDEX ix_admin_events_business_id ON admin_events(business_id);
+INSERT INTO businesses(slug,name,timezone) VALUES('legacy','Existing business',COALESCE(NULLIF(current_setting('app.business_timezone',true),''),'Asia/Kolkata'));
+INSERT INTO branches(business_id,name) SELECT id,'Main Branch' FROM businesses WHERE slug='legacy';
+ALTER TABLE services ADD COLUMN branch_id integer REFERENCES branches(id);
+UPDATE services SET branch_id=(SELECT id FROM branches LIMIT 1);
+ALTER TABLE services ALTER COLUMN branch_id SET NOT NULL;
+CREATE INDEX ix_services_branch_id ON services(branch_id);
+ALTER TABLE services ADD COLUMN average_minutes integer NOT NULL DEFAULT 5;
+ALTER TABLE services ADD COLUMN counter_label varchar(40) NOT NULL DEFAULT '';
+UPDATE services SET is_active=true WHERE is_active IS NULL;
+ALTER TABLE services ALTER COLUMN is_active SET NOT NULL;
+ALTER TABLE services DROP CONSTRAINT IF EXISTS services_name_key;
+ALTER TABLE services DROP CONSTRAINT IF EXISTS services_prefix_key;
+ALTER TABLE services ADD CONSTRAINT uq_service_name UNIQUE(branch_id,name);
+ALTER TABLE services ADD CONSTRAINT uq_service_prefix UNIQUE(branch_id,prefix);
+ALTER TABLE services ADD CONSTRAINT ck_service_duration CHECK(average_minutes BETWEEN 1 AND 120);
+ALTER TABLE tickets ADD COLUMN called_at timestamptz;
+ALTER TABLE tickets ADD COLUMN finished_at timestamptz;
+UPDATE tickets t SET called_at=(SELECT min(timestamp) FROM ticket_events e WHERE e.ticket_id=t.id AND e.event_type='CALLED'),finished_at=(SELECT max(timestamp) FROM ticket_events e WHERE e.ticket_id=t.id AND e.event_type IN ('COMPLETED','SKIPPED'));
+INSERT INTO memberships(business_id,staff_id,role) SELECT b.id,s.id,'staff' FROM businesses b CROSS JOIN staff s WHERE b.slug='legacy';
+INSERT INTO service_assignments(membership_id,service_id) SELECT m.id,s.id FROM memberships m JOIN branches b ON b.business_id=m.business_id JOIN services s ON s.branch_id=b.id;
+-- Existing IDs, numbers, tokens, passwords and event rows remain intact; no default owner account.

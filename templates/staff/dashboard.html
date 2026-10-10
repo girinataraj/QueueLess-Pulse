@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}Staff Queue Dashboard · QueueLess Pulse{% endblock %}
+{% block content %}<div class="page-heading"><div><span class="eyebrow">STAFF WORKSPACE</span><h2>Queue Dashboard</h2><p>Your assigned queues. Complete or skip the active ticket before calling next.</p></div><span id="staff-connection" role="status">Connecting…</span></div><div class="service-queues" id="staff-queues">{% include 'staff/queue_cards.html' %}</div>{% endblock %}
+{% block scripts %}<script>
+let refreshing=false;
+async function refreshQueues(){if(refreshing)return;refreshing=true;try{const response=await fetch('/staff/fragment',{cache:'no-store'});if(!response.ok)throw new Error();document.getElementById('staff-queues').innerHTML=await response.text();document.getElementById('staff-connection').textContent='Connected · Live queues';}catch(error){document.getElementById('staff-connection').textContent='Connection lost or access expired · Retrying…';}finally{refreshing=false;}}
+setInterval(refreshQueues,3000);document.getElementById('staff-connection').textContent='Connected · Live queues';
+</script>{% endblock %}

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: queueless-pulse
+    runtime: python
+    plan: free
+    buildCommand: python -m pip install pip==26.2.1 -r requirements.txt
+    startCommand: gunicorn --workers 2 --threads 4 --bind 0.0.0.0:$PORT app:app
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: BUSINESS_TIMEZONE
+        value: Asia/Kolkata

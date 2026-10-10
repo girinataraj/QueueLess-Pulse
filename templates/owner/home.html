@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}Your Businesses · QueueLess Pulse{% endblock %}
+{% block content %}<div class="page-heading"><div><span class="eyebrow">OWNER WORKSPACE</span><h2>Your businesses</h2><p>Organize every branch, service and team in one place.</p></div></div>
+<div class="service-cards">{% for business in businesses %}<a class="card business-card" href="{{ url_for('universal.owner_dashboard',business_id=business.id) }}"><span class="eyebrow">{{ business.category }}</span><h3>{{ business.name }}</h3><p>/b/{{ business.slug }}</p><span class="text-link">Manage business →</span></a>{% else %}<div class="card empty-state">Create your first business below.</div>{% endfor %}</div>
+<section class="card form-panel"><h3>Create a business</h3><form action="/owner/business/create" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="form-grid">
+<div><label for="name">Business name</label><input id="name" name="name" required maxlength="128"></div><div><label for="slug">Business URL</label><input id="slug" name="slug" placeholder="sakura-clinic" pattern="[a-z0-9]+(-[a-z0-9]+)*" required maxlength="80"></div>
+<div><label for="category">Business type</label><select id="category" name="category">{% for type in ['Clinic','Salon','Bank','Office','Service center','Other'] %}<option>{{ type }}</option>{% endfor %}</select></div><div><label for="timezone">Business timezone</label><input id="timezone" name="timezone" value="Asia/Kolkata" required></div>
+<div class="wide"><label for="description">About the business</label><textarea id="description" name="description" maxlength="1000"></textarea></div></div><button class="btn btn-primary" type="submit">Create business</button></form></section>{% endblock %}

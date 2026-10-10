@@ -1,0 +1,6 @@
+{% set suffix=service.id if service else 'new' %}
+<label for="service-name-{{ suffix }}">Service name</label><input id="service-name-{{ suffix }}" name="name" value="{{ service.name if service else '' }}" maxlength="128" required>
+<div class="form-grid"><div><label for="prefix-{{ suffix }}">Token prefix</label><input id="prefix-{{ suffix }}" name="prefix" value="{{ service.prefix if service else '' }}" pattern="[A-Za-z0-9]{1,6}" maxlength="6" required></div><div><label for="duration-{{ suffix }}">Fallback duration (minutes)</label><input id="duration-{{ suffix }}" name="average_minutes" type="number" min="1" max="120" value="{{ service.average_minutes if service else 5 }}" required></div></div>
+<label for="counter-{{ suffix }}">Counter label (optional)</label><input id="counter-{{ suffix }}" name="counter_label" value="{{ service.counter_label if service else '' }}" maxlength="40">
+<label for="service-description-{{ suffix }}">Description</label><textarea id="service-description-{{ suffix }}" name="description" maxlength="256">{{ service.description or '' if service else '' }}</textarea>
+<label class="check"><input type="checkbox" name="is_active" {% if not service or service.is_active %}checked{% endif %}> Accept new tickets</label><small>Deactivation stops new joins; staff can finish the outstanding queue.</small>

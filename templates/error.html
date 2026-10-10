@@ -1,0 +1,2 @@
+{% extends 'base.html' %}
+{% block content %}<div class="card error-card"><span class="eyebrow">REQUEST {{ error.code }}</span><h2>{{ error.name }}</h2><p>{{ error.description }}</p><div class="actions"><a class="btn btn-primary" href="javascript:history.back()">Go back</a><a class="btn btn-light" href="/">Home</a>{% if error.code==401 %}<a class="btn btn-primary" href="/staff/login">Sign in</a>{% endif %}</div></div>{% endblock %}

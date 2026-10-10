@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}{{ business.name }} · QueueLess Pulse{% endblock %}
+{% block content %}<section class="hero"><span class="eyebrow">{{ business.category }}</span><h2>{{ business.name }}</h2><p>{{ business.description or 'Welcome. Choose your nearest branch to get started.' }}</p><a class="btn btn-light" href="{{ url_for('universal.business_display',slug=business.slug) }}">Reception display</a></section>
+<div class="section-heading"><h2>Choose your branch</h2><span>Local time: {{ business.timezone }}</span></div>
+<div class="service-cards">{% for branch in branches %}<a class="card business-card" href="{{ url_for('universal.branch_landing',slug=business.slug,branch_id=branch.id) }}"><span class="eyebrow">BRANCH</span><h3>{{ branch.name }}</h3><p>{{ branch.address or 'Visit us for your service.' }}</p><span class="text-link">Choose a service →</span></a>{% else %}<p class="empty-state">Branches are being set up. Please check back soon.</p>{% endfor %}</div>{% endblock %}

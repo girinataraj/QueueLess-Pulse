@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Your Ticket - QueueLess Pulse{% endblock %}
+{% block content %}
+<div class="ticket-view"><div class="card ticket-card">
+<span class="eyebrow">{{ ticket.service.branch.business.name }} · {{ ticket.service.branch.name }}</span><div class="ticket-header"><h2>Your Ticket Number</h2><div class="token-display">{{ ticket.display_number }}</div><div class="status-badge status-{{ ticket.status|lower }}" role="status">{{ ticket.status }}</div></div>
+<div class="ticket-details"><p>Service: {{ ticket.service.name }} · Business date: {{ ticket.business_date }}</p>
+<div class="detail-row"><div class="detail-box"><span class="label">People Ahead</span><span class="value highlight" id="people-ahead">{{ people_ahead }}</span></div>
+<div class="detail-box"><span class="label">Estimated Wait</span><span class="value highlight" id="est-time">{{ estimated_time }} min</span></div></div>
+<p class="small-text">Estimate assumes {{ ticket.service.average_minutes }} minutes per person, including the active customer.</p>
+<p>Now serving: <strong id="now-serving">---</strong>{% if ticket.service.counter_label %} · {{ ticket.service.counter_label }}{% endif %}</p>
+<p id="connection-status" role="status">Connecting…</p></div>
+{% if can_cancel and ticket.status == 'WAITING' %}
+<form id="cancel-form" action="{{ url_for('cancel_ticket', token=ticket.token) }}" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger" type="submit">Cancel ticket</button></form>
+{% endif %}
+<label for="recovery-link">Your private recovery link</label><input id="recovery-link" readonly value="{{ request.url }}"><p class="small-text">Save this private link to track your ticket. Cancellation is available in the browser that issued it.</p>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+let lastStatus = {{ ticket.status|tojson }};
+async function updateStatus() {
+    try {
+        const response = await fetch({{ url_for('ticket_status', token=ticket.token)|tojson }}, {cache:'no-store'});
+        if (!response.ok) throw new Error('Request failed');
+        const data = await response.json();
+        document.getElementById('people-ahead').textContent = data.people_ahead;
+        document.getElementById('now-serving').textContent=data.currently_called;
+        document.getElementById('est-time').textContent = data.estimated_time + ' min';
+        const badge = document.querySelector('.status-badge');
+        badge.textContent = data.status;
+        badge.className = 'status-badge status-' + data.status.toLowerCase();
+        if (data.status !== 'WAITING') document.getElementById('cancel-form')?.remove();
+        if (data.status === 'CALLED' && lastStatus !== 'CALLED' && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification("It's your turn!", {body:'Please proceed to the counter.'});
+        }
+        lastStatus = data.status;
+        document.getElementById('connection-status').textContent = 'Connected · Live updates';
+    } catch (error) {
+        document.getElementById('connection-status').textContent = 'Connection lost · Status may be stale · Retrying…';
+    }
+}
+updateStatus();
+setInterval(updateStatus, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,2 @@
+{% extends 'base.html' %}
+{% block content %}<div class="card auth-card"><span class="eyebrow">{{ business.name }}</span><h2>Private staff invitation</h2><p>This link expires after 24 hours and can be accepted once. Share it only with your intended teammate.</p><label for="invite-link">Invitation link</label><input id="invite-link" value="{{ invite_url }}" readonly><p>Copy the link to share privately. No email was sent.</p><a class="btn btn-primary" href="/owner/business/{{ business.id }}#team">Back to team</a></div>{% endblock %}

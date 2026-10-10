@@ -1,0 +1,4 @@
+{% extends 'base.html' %}
+{% block title %}Select Service - QueueLess Pulse{% endblock %}
+{% block content %}<div class="page-heading"><div><span class="eyebrow">{{ business.name if business else 'WELCOME' }}</span><h2>{{ branch.name if branch else 'Select a service' }}</h2><p>Choose your service. No account required.</p></div>{% if business %}<a href="{{ url_for('universal.landing',slug=business.slug) }}">All branches</a>{% endif %}</div>
+<div class="service-cards">{% for service in services %}{% include 'customer/service_card.html' %}{% else %}<div class="card empty-state">No services are accepting new tickets at this branch.</div>{% endfor %}</div>{% endblock %}

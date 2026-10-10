@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Public Queue Display - QueueLess Pulse{% endblock %}
+{% block content %}
+<div class="public-display"><div class="header-banner"><span class="eyebrow">{{ business.name if business else "RECEPTION" }}</span><h2>Now Serving</h2><button class="btn btn-light" id="fullscreen" type="button">Full screen</button><p id="last-update" role="status">Connecting…</p></div><div class="display-grid" id="display-grid"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function updateDisplay() {
+    try {
+        const response = await fetch({{ (display_url or '/api/display_data')|tojson }}, {cache: 'no-store'});
+        if (!response.ok) throw new Error('Network failure');
+        const data = await response.json();
+        const grid = document.getElementById('display-grid');
+        grid.replaceChildren();
+        for (const service of data) {
+            const card = document.createElement('div');
+            card.className = 'card display-card';
+            for (const [className, value] of [['display-branch', service.branch_name || ''], ['display-service-name', service.service_name], ['display-counter', service.counter_label || ''], ['display-token', service.currently_called], ['display-waiting', service.waiting_count + ' waiting']]) {
+                const element = document.createElement('div');
+                element.className = className;
+                element.textContent = value;
+                card.appendChild(element);
+            }
+            grid.appendChild(card);
+        }
+        document.getElementById('last-update').textContent = 'Connected · Updated ' + new Date().toLocaleTimeString();
+    } catch (error) {
+        document.getElementById('last-update').textContent = 'Connection lost · Display may be stale · Retrying…';
+    }
+}
+document.getElementById('fullscreen').addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{});});
+updateDisplay();
+setInterval(updateDisplay, 3000);
+</script>
+{% endblock %}

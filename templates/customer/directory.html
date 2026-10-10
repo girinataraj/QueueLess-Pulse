@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero"><span class="eyebrow">LESS WAITING. BETTER SERVICE.</span><h2>Your place in line.<br>Your time back.</h2><p>Find your business, choose a service and follow your queue from anywhere.</p><a class="btn btn-teal" href="/owner/register">Bring your business to Pulse</a></section>
+<section><div class="section-heading"><h2>{% if display_mode %}Choose a reception display{% else %}Find a business{% endif %}</h2><span>{{ businesses|length }} available</span></div>
+<div class="service-cards">{% for business in businesses %}<a class="card business-card" href="{{ url_for('universal.business_display' if display_mode else 'universal.landing',slug=business.slug) }}"><span class="eyebrow">{{ business.category }}</span><h3>{{ business.name }}</h3><p>{{ business.description or 'Choose a branch and join the queue.' }}</p><span class="text-link">{% if display_mode %}Open display{% else %}View branches{% endif %} →</span></a>{% else %}<div class="card empty-state"><h3>Your business belongs here</h3><p>No businesses have been added yet.</p><a href="/owner/register">Create an owner account</a></div>{% endfor %}</div></section>
+{% if services %}<section class="quick-entry"><h2>Quick entry</h2><div class="service-cards">{% for service in services %}{% include 'customer/service_card.html' %}{% endfor %}</div></section>{% endif %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endblock %}
