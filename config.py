@@ -16,3 +16,9 @@ class Config:
     MAX_CONTENT_LENGTH = 16384
     PUBLIC_BASE_URL = os.getenv('PUBLIC_BASE_URL', '').rstrip('/')
     TRUSTED_HOSTS = [host.strip() for host in os.getenv('TRUSTED_HOSTS','').split(',') if host.strip()] or None
+    RATE_LIMIT_AUTH = int(os.getenv('RATE_LIMIT_AUTH', '30'))
+    RATE_LIMIT_QUEUE = int(os.getenv('RATE_LIMIT_QUEUE', '120'))
+    RATE_LIMIT_TRUSTED_PROXY_HOPS = int(os.getenv('RATE_LIMIT_TRUSTED_PROXY_HOPS', '0'))
+    DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+    DEMO_ACCESS_USER = os.getenv('DEMO_ACCESS_USER', '')
+    DEMO_ACCESS_PASSWORD = os.getenv('DEMO_ACCESS_PASSWORD', '')

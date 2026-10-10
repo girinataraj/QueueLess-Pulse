@@ -262,6 +262,10 @@ def permissions(business_id,membership_id):
 @universal.post('/owner/business/<int:business_id>/staff/invite')
 @login_required
 def invite_staff(business_id):
+    business,invite_url=make_invitation(business_id)
+    return render_template('owner/invite_created.html',business=business,invite_url=invite_url)
+
+def make_invitation(business_id,react=False):
     business=owner_business(business_id)
     token=secrets.token_urlsafe(32)
     invite=StaffInvite(business_id=business_id,token_hash=hashlib.sha256(token.encode()).hexdigest(),expires_at=datetime.now(timezone.utc)+timedelta(hours=24),created_by=current_user().id)
@@ -270,7 +274,7 @@ def invite_staff(business_id):
     commit()
     invite_path=url_for('universal.accept_invite',token=token)
     base=current_app.config.get('PUBLIC_BASE_URL') or request.url_root.rstrip('/')
-    return render_template('owner/invite_created.html',business=business,invite_url=base.rstrip('/')+invite_path)
+    return business,base.rstrip('/')+('/app' if react else '')+invite_path
 
 @universal.route('/invite/<token>',methods=['GET','POST'])
 def accept_invite(token):
@@ -417,6 +421,8 @@ def qr(business_id):
         endpoint='universal.branch_landing'
         kwargs['branch_id']=bid
     path=url_for(endpoint,**kwargs)
+    if request.args.get('ui')=='react':
+        path='/app'+path
     base=current_app.config.get('PUBLIC_BASE_URL') or request.url_root.rstrip('/')
     image=qrcode.make(base.rstrip('/')+path)
     buffer=io.BytesIO()

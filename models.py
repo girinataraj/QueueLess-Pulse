@@ -8,6 +8,14 @@ db = SQLAlchemy()
 def utcnow():
     return datetime.now(timezone.utc)
 
+class RateLimitBucket(db.Model):
+    """Short-lived HMAC identifiers; shared by all production workers."""
+    __tablename__ = 'rate_limit_buckets'
+    key_hash = db.Column(db.String(64), primary_key=True)
+    window_start = db.Column(db.BigInteger, primary_key=True, index=True)
+    hits = db.Column(db.Integer, nullable=False)
+    __table_args__ = (db.CheckConstraint('hits > 0', name='ck_rate_limit_hits'),)
+
 class Staff(db.Model):
     __tablename__ = 'staff'
     id = db.Column(db.Integer, primary_key=True)

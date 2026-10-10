@@ -22,6 +22,7 @@ def create_app(test_config=None):
         app.config.update(test_config)
     if app.config['PRODUCTION']:
         app.config['SESSION_COOKIE_SECURE'] = True
+        app.config['DEBUG'] = False
         if not os.getenv('SECRET_KEY') or len(os.getenv('SECRET_KEY', '')) < 32:
             raise RuntimeError('Production requires SECRET_KEY with at least 32 characters')
         if not app.config['SQLALCHEMY_DATABASE_URI'].startswith(('postgresql://', 'postgresql+')):
@@ -31,6 +32,12 @@ def create_app(test_config=None):
         raise RuntimeError('Average service time must be positive')
     db.init_app(app)
     app.register_blueprint(universal)
+    from api import api
+    app.register_blueprint(api)
+    from demo_access import configure as configure_demo_access
+    configure_demo_access(app)
+    from rate_limit import configure as configure_rate_limits
+    configure_rate_limits(app)
 
     def csrf_token():
         session.setdefault('csrf_token', secrets.token_urlsafe(32))
@@ -45,7 +52,7 @@ def create_app(test_config=None):
     def csrf_check():
         if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
             expected = session.get('csrf_token', '')
-            actual = request.form.get('csrf_token', '')
+            actual = request.headers.get('X-CSRF-Token', request.form.get('csrf_token', '')) if request.path.startswith('/api/v1/') else request.form.get('csrf_token', '')
             if not expected or not secrets.compare_digest(expected, actual):
                 abort(400, 'Invalid form token. Reload the page and retry.')
 
@@ -62,6 +69,8 @@ def create_app(test_config=None):
     def database_error(error):
         db.session.rollback()
         app.logger.error('Database operation failed: %s', type(error).__name__)
+        if request.path.startswith('/api/v1/'):
+            return jsonify(error={'code':'database_unavailable','message':'Database temporarily unavailable. Please retry.'}),503
         return 'Database temporarily unavailable. Please retry.', 503
 
     @app.errorhandler(IntegrityError)
@@ -69,13 +78,24 @@ def create_app(test_config=None):
         db.session.rollback()
         from werkzeug.exceptions import Conflict
         conflict=Conflict('The request conflicts with saved data. Reload and check names, prefixes and submission keys.')
+        if request.path.startswith('/api/v1/'):
+            return jsonify(error={'code':'conflict','message':conflict.description}),409
         return render_template('error.html',error=conflict),409
 
     from werkzeug.exceptions import HTTPException
     @app.errorhandler(HTTPException)
     def request_error(error):
         db.session.rollback()
-        return render_template('error.html',error=error),error.code
+        if request.path.startswith('/api/v1/'):
+            response=jsonify(error={'code':error.name.lower().replace(' ','_'),'message':error.description})
+            response.status_code=error.code
+            if error.code == 429:
+                response.headers['Retry-After']=str(error.retry_after)
+            return response
+        response=app.make_response((render_template('error.html',error=error),error.code))
+        if error.code == 429:
+            response.headers['Retry-After']=str(error.retry_after)
+        return response
 
     def staff_required(fn):
         @wraps(fn)
@@ -102,6 +122,27 @@ def create_app(test_config=None):
                 'estimated_time': ahead * ticket.service.average_minutes,
                 'currently_called': (Ticket.query.filter_by(service_id=ticket.service_id,status='CALLED').first().display_number if Ticket.query.filter_by(service_id=ticket.service_id,status='CALLED').first() else '---'),
                 'service_name':ticket.service.name,'branch_name':ticket.service.branch.name,'business_name':ticket.service.branch.business.name,'counter_label':ticket.service.counter_label}
+
+    app.extensions['queue_state']=state
+
+    @app.get('/app')
+    @app.get('/app/')
+    @app.get('/app/<path:path>')
+    def react_frontend(path=''):
+        from flask import send_from_directory
+        root=Path(app.root_path)/'frontend'/'dist'
+        if path.startswith('assets/'):
+            return send_from_directory(root,path)
+        if not (root/'index.html').exists():
+            abort(503,'React build unavailable. Use the existing UI or build frontend first.')
+        return send_from_directory(root,'index.html')
+
+    @app.get('/app.webmanifest')
+    def react_manifest():
+        import json
+        manifest=json.loads((Path(app.static_folder)/'manifest.json').read_text(encoding='utf-8'))
+        manifest.update(id='/app',start_url='/app/',scope='/app/',name='QueueLess Pulse Workspace')
+        return jsonify(manifest)
 
     @app.cli.command('initdb')
     def initdb():
@@ -147,13 +188,14 @@ def create_app(test_config=None):
             raise click.ClickException('No schema found; run initdb for a fresh database')
         old_numbering='business_date' not in {c['name'] for c in inspector.get_columns('tickets')}
         old_tenants='branch_id' not in {c['name'] for c in inspector.get_columns('services')}
-        if not old_numbering and not old_tenants:
+        old_limits=not inspector.has_table('rate_limit_buckets')
+        if not old_numbering and not old_tenants and not old_limits:
             click.echo('Schema already current.')
             return
         try:
             with db.engine.begin() as connection:
                 connection.execute(text("SELECT set_config('app.business_timezone', :tz, true)"), {'tz': app.config['BUSINESS_TIMEZONE']})
-                for needed,filename in [(old_numbering,'001_queue_integrity.sql'),(old_tenants,'002_universal.sql'),(old_tenants,'003_assignment_guard.sql')]:
+                for needed,filename in [(old_numbering,'001_queue_integrity.sql'),(old_tenants,'002_universal.sql'),(old_tenants,'003_assignment_guard.sql'),(old_limits,'004_rate_limits.sql')]:
                     if needed:
                         connection.execute(text((Path(app.root_path)/'migrations'/filename).read_text(encoding='utf-8')))
         except SQLAlchemyError as error:
@@ -204,6 +246,8 @@ def create_app(test_config=None):
         db.session.execute(select(Service.seq_date, Service.branch_id, Service.average_minutes).limit(0))
         db.session.execute(select(Membership.business_id).limit(0))
         db.session.execute(select(Ticket.business_date, Ticket.request_key).limit(0))
+        from models import RateLimitBucket
+        db.session.execute(select(RateLimitBucket.hits).limit(0))
         return jsonify(status='ok')
 
     @app.get('/sw.js')

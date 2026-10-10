@@ -3,17 +3,37 @@ services:
     name: queueless-pulse
     runtime: python
     plan: free
-    buildCommand: python -m pip install pip==26.2.1 -r requirements.txt
-    startCommand: gunicorn --workers 2 --threads 4 --bind 0.0.0.0:$PORT app:app
+    branch: main
+    autoDeployTrigger: 'off'
+    buildCommand: bash scripts/render-build.sh
+    startCommand: gunicorn --workers 2 --threads 4 --bind 0.0.0.0:$PORT --access-logfile - --access-logformat 'method=%(m)s status=%(s)s duration_us=%(D)s' --error-logfile - app:app
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.14
       - key: APP_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
         sync: false
       - key: BUSINESS_TIMEZONE
         value: Asia/Kolkata
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: DEMO_MODE
+        value: 'true'
+      - key: DEMO_ACCESS_USER
+        sync: false
+      - key: DEMO_ACCESS_PASSWORD
+        generateValue: true
+      - key: RATE_LIMIT_AUTH
+        value: '30'
+      - key: RATE_LIMIT_QUEUE
+        value: '120'
+      - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
+        value: '1'

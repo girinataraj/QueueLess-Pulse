@@ -1,0 +1,15 @@
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Activity, Building2, ClipboardList, Monitor, LogOut, Users } from 'lucide-react';
+import { api, session } from '../api/client';
+import { Button } from './ui/button';
+import { useState } from 'react';
+import { ErrorMessage, QueryState } from './feedback';
+export function Layout() {
+  const auth = useQuery({ queryKey: ['session'], queryFn: session, staleTime: 0 });
+  const queryClient = useQueryClient(); const [signingOut, setSigningOut] = useState(false); const [logoutError, setLogoutError] = useState<Error | null>(null); const location = useLocation();
+  const links = [{ to: '/', name: 'Find a business', icon: Building2 }, { to: '/my-tickets', name: 'My tickets', icon: ClipboardList }, { to: '/staff/dashboard', name: 'Staff console', icon: Users }, { to: '/owner', name: 'Owner workspace', icon: Activity }, { to: '/display', name: 'Public display', icon: Monitor }];
+  async function logout() { setSigningOut(true); setLogoutError(null); try { await api('/auth/logout', {}); queryClient.clear(); await session(); window.location.assign('/app/'); } catch (error) { setLogoutError(error instanceof Error ? error : new Error('Unable to sign out. Please retry.')); } finally { setSigningOut(false); } }
+  return <div className="app-shell"><a className="skip-link" href="#main">Skip to content</a><header className="app-header"><Link to="/" className="brand"><span className="brand-mark"><Activity size={22}/></span><span>QueueLess <b>Pulse</b><small>UNIVERSAL QUEUE PLATFORM</small></span></Link><div className="account"><span>{auth.data?.user?.username ?? 'Welcome to Pulse'}</span>{auth.data?.user ? <Button variant="secondary" disabled={signingOut} onClick={() => void logout()}><LogOut size={16}/>Sign out</Button> : <Link to="/owner/login">Sign in</Link>}</div></header><aside className="sidebar"><span className="nav-label">WORKSPACE</span><nav aria-label="Main navigation">{links.map(({to,name,icon:Icon}) => <NavLink key={to} to={to} end={to==='/' || to==='/owner'}><Icon size={18}/>{name}</NavLink>)}</nav><div className="sidebar-note"><span className="dot"/>One platform. Every queue.<a href="/">Open existing interface</a></div></aside><main id="main" className="content" key={location.pathname}>{auth.data?.demo_mode && <p className="notice" role="status">Restricted evaluator demo · Fictional data only · Not approved for real customer use.</p>}<ErrorMessage error={logoutError}/><QueryState query={auth}><Outlet/></QueryState></main><footer className="app-footer">QueueLess Pulse · More time for what matters.</footer></div>;
+}
+export function Heading({ eyebrow, title, description, children }: { eyebrow: string; title: string; description?: string; children?: React.ReactNode }) { return <div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1>{description && <p>{description}</p>}</div>{children}</div>; }
