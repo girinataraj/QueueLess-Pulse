@@ -89,3 +89,7 @@ $env:TRUSTED_HOSTS='127.0.0.1,localhost'
 ```
 
 Open `/owner/register`, create your owner/business/branch/service, then create staff and assign permissions. Separate browser profiles let owner, staff and customer remain signed in independently. Customer `/`, staff `/staff/login`, owner `/owner`, display `/display`; scoped links are in the owner dashboard. No default credentials are created. Keep the same terminal open to retain its secret. Ctrl+C stops preview. Generating another secret invalidates old sessions but preserves data.
+
+## CI fixture correction (2026-10-10)
+
+The original GitHub Linux run intermittently exited 139 during browser tests because its threaded server shared the in-memory SQLite fixture connection. Browser tests now use isolated file databases with separate pooled connections and proper server cleanup. A regression proves connection/transaction independence. All original 73 scenarios remain, plus one regression: **74 passed, 0 failed, 0 skipped in 153.196 seconds** in the full local run. Dependency audit found no known vulnerabilities. See [CI_INVESTIGATION.md](CI_INVESTIGATION.md) for original run evidence, reproduction and fix boundaries. The workflow and production application remain unchanged.

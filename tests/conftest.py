@@ -6,7 +6,17 @@ from models import db, Service, Staff, Business, Branch, Membership, ServiceAssi
 
 @pytest.fixture
 def application():
-    app = create_app({'TESTING': True, 'PRODUCTION': False, 'SECRET_KEY': 'test-only', 'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:'})
+    yield from seeded_application('sqlite:///:memory:')
+
+@pytest.fixture
+def browser_application(tmp_path):
+    # The threaded browser server needs separate pooled DBAPI connections.
+    # In-memory SQLite uses StaticPool and shares one connection concurrently.
+    uri = 'sqlite:///' + (tmp_path / 'browser.sqlite3').as_posix()
+    yield from seeded_application(uri)
+
+def seeded_application(uri):
+    app = create_app({'TESTING': True, 'PRODUCTION': False, 'SECRET_KEY': 'test-only', 'SQLALCHEMY_DATABASE_URI': uri})
     with app.app_context():
         db.create_all()
         seed_foundation()
@@ -14,6 +24,7 @@ def application():
     with app.app_context():
         db.session.remove()
         db.drop_all()
+        db.engine.dispose()
 
 @pytest.fixture
 def client(application):

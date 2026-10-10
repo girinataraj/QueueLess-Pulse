@@ -46,3 +46,7 @@ Local PWA manifests, registration/cache policy/mobile flows pass. Hosted HTTPS p
 Exact PowerShell commands in TESTING_REPORT and README use existing `.venv`, separate `universal-preview.db`, private process secret and loopback port 5000. Register at `/owner/register`; configure business/branch/service/staff and permissions. Inspect customer `/`, staff `/staff/login`, owner `/owner` and reception `/display` in separate browser profiles.
 
 After UI inspection and user instruction to resume: prepare/publish root repository, configure Neon/Render Free secrets, initialize/upgrade safely, provision owner, launch Gunicorn, verify actual HTTPS health/all four flows/isolation/restart/PWA. These external actions remain pending.
+
+## CI fixture correction (2026-10-10)
+
+The original GitHub Linux run intermittently exited 139 during browser tests because its threaded server shared the in-memory SQLite fixture connection. Browser tests now use isolated file databases with separate pooled connections and proper server cleanup. A regression proves connection/transaction independence. All original 73 scenarios remain, plus one regression: **74 passed, 0 failed, 0 skipped in 153.196 seconds** in the full local run. Dependency audit found no known vulnerabilities. See [CI_INVESTIGATION.md](CI_INVESTIGATION.md) for original run evidence, reproduction and fix boundaries. The workflow and production application remain unchanged.
