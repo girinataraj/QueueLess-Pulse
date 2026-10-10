@@ -7,7 +7,7 @@ Authorized scope: privately invited technical evaluators/project reviewers/teste
 1. The feature PR must pass both push and pull_request checks at its final head, and the user must approve merging that concrete PR. No automatic merge is authorized.
 2. Confirm the account-owned Render workspace and PostgreSQL choice/region/plan. The connected account exposes `giri's workspace`; confirmation is pending. The blueprint deliberately takes DATABASE_URL as a private environment input, so it does not create an unintended database or spend money.
 3. Configure the real HTTPS origin, allowed hostnames and strong private secrets, initialize a **fresh empty** database (or back up/review an additive upgrade of an intended existing database), then pass hosted health and four-role/isolation tests. No live URL or provider startup is claimed before those checks.
-4. Validate the actual Render proxy chain and forwarded-header spoof resistance before distributing evaluator access. The prepared rate limiter trusts one appended hop; adjust only against verified edge behavior. HTTPS is provided by Render's edge and must be verified on the actual service.
+4. Validate the actual Render proxy chain and forwarded-header spoof resistance before distributing evaluator access. On the Singapore demo edge verified on October 10, 2026, the real client address is third from the right; the configuration therefore trusts three appended hops. Client-supplied prefixes remain to its left. Revalidate this setting if the hosting topology changes. HTTPS is provided by Render's edge and must be verified on the actual service.
 
 Missing operator/privacy contact/reviewed terms/retention are blockers for unrestricted/real-data/commercial launch, not for the authorized restricted synthetic demonstration. Draft privacy/terms/storage documents are in docs/legal. Backup/restore, monitoring/incident ownership, user recovery/export/deletion and approved retention must be established before broader real-world use. Physical-device installation and wider load testing are additional unverified operations.
 
@@ -31,7 +31,7 @@ Missing operator/privacy contact/reviewed terms/retention are blockers for unres
 | TRUSTED_HOSTS | Verified service hostname plus any required loopback health hostname; do not accept arbitrary origins |
 | BUSINESS_TIMEZONE | Asia/Kolkata default/legacy context; each business owns an IANA timezone |
 | Limits | Auth 30 POST attempts / 300 seconds; queue issue 120 POST attempts / 60 seconds; shared legacy/React groups, database-atomic across workers |
-| Proxy trust | RATE_LIMIT_TRUSTED_PROXY_HOPS=1 in Render blueprint, 0 locally; validate actual edge chain |
+| Proxy trust | RATE_LIMIT_TRUSTED_PROXY_HOPS=3 for the verified Render Singapore edge, 0 locally; revalidate after topology changes |
 
 Render schema validation has passed against the official current JSON Schema. The validation initially caught an unquoted YAML `off` parsed as boolean; the configuration now quotes the string. The build performs **no database mutation**. There is no default account or development seed. Generated dist/node_modules are excluded from Git; hosting builds from locked source.
 

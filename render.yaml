@@ -36,4 +36,4 @@ services:
       - key: RATE_LIMIT_QUEUE
         value: '120'
       - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
-        value: '1'
+        value: '3'

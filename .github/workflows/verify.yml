@@ -48,7 +48,7 @@ jobs:
           python - <<'PY'
           import xml.etree.ElementTree as ET
           suite = ET.parse('evidence/ci.xml').getroot().find('testsuite')
-          assert int(suite.attrib['tests']) >= 97
+          assert int(suite.attrib['tests']) >= 98
           assert all(suite.attrib[key] == '0' for key in ('failures', 'errors', 'skipped'))
           frontend = ET.parse('evidence/frontend.xml').getroot()
           cases = list(frontend.iter('testcase'))

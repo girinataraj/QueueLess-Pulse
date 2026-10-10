@@ -48,6 +48,24 @@ def test_queue_limit_forwarding_spoof_and_expired_cleanup(client,application,mon
     assert from_proxy('8.8.8.8, 203.0.113.2').status_code==429
     assert from_proxy('203.0.113.3').status_code==201
 
+def test_render_three_hop_chain_ignores_spoofs_and_changing_proxies(client,application):
+    application.config['RATE_LIMIT_QUEUE']=1
+    application.config['RATE_LIMIT_TRUSTED_PROXY_HOPS']=3
+    token=client.get('/api/v1/session').json['csrf_token']
+    def issue(chain):
+        return client.post('/api/v1/services/1/tickets',
+            data={'csrf_token':token,'request_key':str(uuid.uuid4())},
+            headers={'X-Forwarded-For':chain})
+    assert issue('203.0.113.2, 198.51.100.100, 10.0.0.1').status_code==201
+    # The edge appends three addresses. Neither a forged prefix nor changing
+    # intermediary proxy addresses may create another bucket for this client.
+    assert issue('192.0.2.50, 192.0.2.51, 203.0.113.2, 198.51.100.101, 10.0.0.2').status_code==429
+    assert issue('203.0.113.3, 198.51.100.101, 10.0.0.2').status_code==201
+    with application.app_context():
+        assert Ticket.query.count()==2
+        assert RateLimitBucket.query.count()==2
+
+
 @pytest.mark.postgres
 def test_postgres_rate_limit_atomic_across_connections(pg_app):
     pg_app.config['RATE_LIMIT_QUEUE']=2
