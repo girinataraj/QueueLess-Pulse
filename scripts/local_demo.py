@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PRIVATE = ROOT / '.tmp'
 PROFILE = PRIVATE / 'local-demo-private.json'
 PG_BIN = Path(r'C:\Program Files\PostgreSQL\18\bin')
-DATABASE = 'queueless_erode_demo'
+DATABASE = 'queueless_erode_integration'
 SLUG = 'erode-eye-clinic-demo'
 EXPECTED = {'waiting': 5, 'called': 1, 'completed': 7, 'skipped': 2}
 
@@ -44,8 +44,8 @@ def load_profile():
             port = candidate
             break
     if port is None: raise RuntimeError('No free local PostgreSQL demo port')
-    data = {'database':DATABASE,'host':'127.0.0.1','port':port,'role':'queueless_demo',
-            'database_password':secrets.token_urlsafe(36), 'admin_role':'queueless_demo_admin',
+    data = {'database':DATABASE,'host':'127.0.0.1','port':port,'role':'queueless_integration',
+            'database_password':secrets.token_urlsafe(36), 'admin_role':'queueless_integration_admin',
             'admin_password':secrets.token_urlsafe(36),'session_secret':secrets.token_hex(48),
             'gateway_user':'local-reviewer','gateway_password':secrets.token_urlsafe(36),
             'seed_customer_id':secrets.token_hex(16),'origin':'http://127.0.0.1:5000',
@@ -168,7 +168,8 @@ def make_app(profile, origin=None, schema='public'):
                       'SESSION_COOKIE_SECURE':False,'DEMO_MODE':True,
                       'DEMO_ACCESS_USER':profile['gateway_user'],'DEMO_ACCESS_PASSWORD':profile['gateway_password'],
                       'PUBLIC_BASE_URL':origin,'TRUSTED_HOSTS':['127.0.0.1','localhost',host],
-                      'BUSINESS_TIMEZONE':'Asia/Kolkata','RATE_LIMIT_TRUSTED_PROXY_HOPS':0})
+                      'BUSINESS_TIMEZONE':'Asia/Kolkata','RATE_LIMIT_TRUSTED_PROXY_HOPS':0,
+                      'SESSION_COOKIE_NAME':'queueless_erode_integration'})
     return app
 
 def configure_lan_http(app):
@@ -362,6 +363,9 @@ refresh();setInterval(refresh,3000);
 
 def write_access(app,profile):
     urls,qr_path=create_reception_assets(app,profile)
+    urls['reception']=profile['origin']+'/app/staff/reception'
+    urls['reception_login']=profile['origin']+'/app/staff/login?experience=reception'
+    urls['fallback_reception']=profile['origin']+'/static/local-demo/reception.html'
     reception=urls['reception'];display=urls['display'];patient=urls['patient']
     profile['urls']=urls;PROFILE.write_text(json.dumps(profile,indent=2),encoding='utf-8');protect(PROFILE)
     lines=['# PRIVATE — Local Erode Eye Clinic demo access','',
@@ -370,37 +374,41 @@ def write_access(app,profile):
     for role in ('owner','doctor','receptionist'):
         account=profile['accounts'][role]
         lines += ['## '+role.title(),'', 'Username: '+account['username'],'Password: '+account['password'],'']
-    lines += ['Receptionist has an ACTIVE Staff membership with no clinical service assignment and no Owner rights. Use the Reception link and printed Owner-generated QR; application sign-in is optional for that read-only view.',
+    lines += ['Receptionist has an ACTIVE Staff membership with no clinical service assignment and no Owner rights. Sign in using reception_login to open the dedicated read-only Reception dashboard, QR download and print.',
               'Doctor has an ACTIVE membership and the Eye Consultation assignment.', '', '## Interface URLs','']
     lines += [name+': '+url for name,url in urls.items()]
     lines += ['', 'QR image: '+str(qr_path),'',
               'Use separate browser profiles for Owner and Doctor, or log out before switching.',
-              'Initial called E010 must be completed/skipped before Call Next. Waiting E011–E015 precede a newly joined E016 in FIFO order.',
+              'The currently called ticket must be marked Reviewed or Skipped before Call Next. Older outstanding tickets remain ahead of newer tickets across dates. After a fresh daily fixture, called E010 and waiting E011–E015 precede the newly joined E016.',
               '', '## pgAdmin 4 — new separate local server', '',
-              'Name: QueueLess Pulse — LOCAL PostgreSQL 18','Host: 127.0.0.1','Port: '+str(profile['port']),
+              'Name: QueueLess Pulse — Erode integration LOCAL PostgreSQL 18','Host: 127.0.0.1','Port: '+str(profile['port']),
               'Maintenance database: '+DATABASE,'Username: '+profile['role'],
               'Password: '+profile['database_password'],'SSL mode: disable (loopback-only local instance)',
               'Data directory: '+str(PRIVATE/'postgres18-data'),
               'Do not edit or connect this demo to the older Digital ocean server.']
     access=PRIVATE/'PRIVATE_LOCAL_DEMO_ACCESS.md';access.write_text('\n'.join(lines)+'\n',encoding='utf-8');protect(access)
     receptor=PRIVATE/'PRIVATE_RECEPTION_ACCESS.md'
-    receptor.write_text('# PRIVATE — Local Reception\n\nGateway username: '+profile['gateway_user']+'\nGateway password: '+profile['gateway_password']+'\n\nReception: '+reception+'\nDisplay: '+display+'\nPatient: '+patient+'\n\nShow the generated QR; do not distribute Owner or Doctor credentials.\n',encoding='utf-8');protect(receptor)
+    account=profile['accounts']['receptionist']
+    receptor.write_text('# PRIVATE — Local Reception\n\nGateway username: '+profile['gateway_user']+'\nGateway password: '+profile['gateway_password']+'\n\nReception username: '+account['username']+'\nReception password: '+account['password']+'\nSign in: '+urls['reception_login']+'\nReception: '+reception+'\nDisplay: '+display+'\nPatient: '+patient+'\n\nShow the generated QR; do not distribute Owner or Doctor credentials.\n',encoding='utf-8');protect(receptor)
 
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('action',choices=['setup','start','info','stop-postgres'])
     parser.add_argument('--lan-address')
     parser.add_argument('--https',action='store_true')
+    parser.add_argument('--port',type=int)
     args=parser.parse_args()
     profile=load_profile()
     if args.action=='stop-postgres':
         run_pg('pg_ctl','-D',PRIVATE/'postgres18-data','stop','-m','fast');print('Stopped only the isolated local-demo PostgreSQL cluster.');return
-    profile['origin']='http://127.0.0.1:5000'
+    profile['app_port']=args.port or profile.get('app_port',5000)
+    assert 1024<=profile['app_port']<=65535
+    profile['origin']=f'http://127.0.0.1:{profile["app_port"]}'
     if args.lan_address:
         address=ipaddress.ip_address(args.lan_address)
         assert address.version==4 and address.is_private and not address.is_loopback
         with socket.socket() as probe:probe.bind((str(address),0))
-        profile['origin']=f'{"https" if args.https else "http"}://{address}:5000'
+        profile['origin']=f'{"https" if args.https else "http"}://{address}:{profile["app_port"]}'
     assert not args.https or args.lan_address, 'HTTPS mode requires a specific LAN address'
     start_postgres(profile)
     app=make_app(profile)
@@ -422,8 +430,17 @@ def main():
     class PrivateHandler(WSGIRequestHandler):
         def log_request(self,*args,**kwargs): pass  # Never log ticket recovery URLs or credentials.
     bind=args.lan_address or '127.0.0.1'
+    server=make_server(bind,profile['app_port'],app,threaded=True,request_handler=PrivateHandler,ssl_context=tls)
+    pidfile=PRIVATE/'flask-demo-process.json'
+    ticks=subprocess.check_output(['powershell.exe','-NoProfile','-Command',
+        f'(Get-Process -Id {os.getpid()}).StartTime.ToUniversalTime().Ticks'],text=True).strip()
+    pidfile.write_text(json.dumps({'pid':os.getpid(),'root':str(ROOT),'port':profile['app_port'],
+                                  'address':bind,'process_start_ticks':ticks}),encoding='utf-8');protect(pidfile)
     print('Local demo ready: '+profile['origin']+'/app/ . Private access file: '+str(PRIVATE/'PRIVATE_LOCAL_DEMO_ACCESS.md'),flush=True)
-    make_server(bind,5000,app,threaded=True,request_handler=PrivateHandler,ssl_context=tls).serve_forever()
+    try:server.serve_forever()
+    finally:
+        server.server_close()
+        if pidfile.exists():pidfile.unlink()
 
 if __name__=='__main__':
     try:main()

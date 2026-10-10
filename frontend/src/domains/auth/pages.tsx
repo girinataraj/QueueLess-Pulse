@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, session, type Values } from '../../api/client';
 import type { Session, Invitation } from '../../api/contracts';
@@ -11,7 +11,8 @@ function useAuthenticate(path: string, target: string) {
   return useMutation({ mutationFn: async (values: Values) => { await api<Session>(path, values); return session(); }, onSuccess: data => { cache.clear(); cache.setQueryData(['session'],data); navigate(target); } });
 }
 export function AuthPage({ register = false, staff = false }: { register?: boolean; staff?: boolean }) {
-  const mutation=useAuthenticate(register ? '/auth/register' : '/auth/login', staff ? '/staff/dashboard' : '/owner');
+  const [params]=useSearchParams();const reception=staff && params.get('experience')==='reception';
+  const mutation=useAuthenticate(register ? '/auth/register' : '/auth/login', reception ? '/staff/reception' : staff ? '/staff/dashboard' : '/owner');
   const fields=register ? accountFields : [accountFields[0]!, { name: 'password', label: 'Password', type: 'password' as const, required: true, max: 128 }];
   return <div className="auth-container"><Heading eyebrow={staff ? 'STAFF CONSOLE' : 'BUILT FOR YOUR BUSINESS'} title={register ? 'Create your owner account' : staff ? 'Staff sign in' : 'Owner sign in'} description="One platform for clinics, salons, banks and service teams."/><div className="card"><Form fields={fields} submit={register ? 'Create account' : 'Sign in'} onSubmit={mutation.mutateAsync} busy={mutation.isPending} error={mutation.error}/><p>{register ? 'Already registered?' : 'New to Pulse?'} <Link to={register ? '/owner/login' : '/owner/register'}>{register ? 'Sign in' : 'Create an account'}</Link></p></div></div>;
 }

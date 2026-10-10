@@ -2,7 +2,7 @@ import hashlib
 import io
 import re
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, date, time, timezone, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from urllib.parse import urlsplit
 import qrcode
@@ -99,9 +99,9 @@ def display_rows(services):
     rows=[]
     for service in services:
         called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
-        today=datetime.now(ZoneInfo(service.branch.business.timezone)).date()
-        completed=Ticket.query.filter_by(service_id=service.id,status='COMPLETED',business_date=today).count()
-        rows.append({'service_id':service.id,'service_name':service.name,'branch_name':service.branch.name,'business_name':service.branch.business.name,'business_slug':service.branch.business.slug,'counter_label':service.counter_label,'currently_called':called.display_number if called else '---','waiting_count':Ticket.query.filter_by(service_id=service.id,status='WAITING').count(),'completed_today':completed})
+        today,start,end=business_day(service.branch.business)
+        terminal=Ticket.query.filter(Ticket.service_id==service.id,Ticket.finished_at>=start,Ticket.finished_at<end)
+        rows.append({'service_id':service.id,'service_name':service.name,'branch_name':service.branch.name,'business_name':service.branch.business.name,'business_slug':service.branch.business.slug,'counter_label':service.counter_label,'currently_called':called.display_number if called else '---','waiting_count':Ticket.query.filter_by(service_id=service.id,status='WAITING').count(),'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today)})
     return rows
 
 @universal.route('/owner/register',methods=['GET','POST'])
@@ -319,19 +319,44 @@ def accept_invite(token):
 def aware(value):
     return value.replace(tzinfo=timezone.utc) if value and value.tzinfo is None else value
 
+def business_day(business, day=None):
+    """UTC boundaries for an actual business-local calendar day (including DST)."""
+    zone=ZoneInfo(business.timezone)
+    day=day or datetime.now(zone).date()
+    return day,datetime.combine(day,time.min,zone).astimezone(timezone.utc),datetime.combine(day+timedelta(days=1),time.min,zone).astimezone(timezone.utc)
+
+def history_filters(query, business):
+    basis=request.args.get('date_basis','issued')
+    if basis not in ('issued','finished'):
+        abort(400,'Invalid date basis.')
+    raw=request.args.get('date')
+    if raw:
+        try:
+            if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',raw):
+                raise ValueError
+            day=date.fromisoformat(raw)
+        except ValueError:
+            abort(400,'Use a valid date in YYYY-MM-DD format.')
+        if basis=='finished':
+            _,start,end=business_day(business,day)
+            query=query.filter(Ticket.finished_at>=start,Ticket.finished_at<end)
+        else:
+            query=query.filter(Ticket.business_date==day)
+    return query
+
 def statistics(business_id):
     query=Ticket.query.join(Service).join(Branch).filter(Branch.business_id==business_id)
     counts=dict(query.with_entities(Ticket.status,func.count(Ticket.id)).group_by(Ticket.status).all())
     business=db.session.get(Business,business_id)
-    today=datetime.now(ZoneInfo(business.timezone)).date()
-    counts_today=dict(query.filter(Ticket.business_date==today).with_entities(Ticket.status,func.count(Ticket.id)).group_by(Ticket.status).all())
+    today,start,end=business_day(business)
+    counts_today=dict(query.filter(Ticket.finished_at>=start,Ticket.finished_at<end).with_entities(Ticket.status,func.count(Ticket.id)).group_by(Ticket.status).all())
     # Mean computed from actual persisted timestamps; no fabricated AI metric.
     called=query.filter(Ticket.called_at.is_not(None)).all()
     waits=[max(0,(aware(t.called_at)-aware(t.created_at)).total_seconds()/60) for t in called]
     completed=query.filter(Ticket.status=='COMPLETED',Ticket.called_at.is_not(None),Ticket.finished_at.is_not(None)).all()
     durations=[max(0,(aware(t.finished_at)-aware(t.called_at)).total_seconds()/60) for t in completed]
     throughput=query.filter(Ticket.business_date>=today-timedelta(days=6),Ticket.status=='COMPLETED').with_entities(Ticket.business_date,func.count(Ticket.id)).group_by(Ticket.business_date).order_by(Ticket.business_date).all()
-    return {'waiting':counts.get('WAITING',0),'called':counts.get('CALLED',0),'completed':counts.get('COMPLETED',0),'skipped':counts.get('SKIPPED',0),'cancelled':counts.get('CANCELLED',0),'completed_today':counts_today.get('COMPLETED',0),'skipped_today':counts_today.get('SKIPPED',0),'average_wait':round(sum(waits)/len(waits),1) if waits else None,'average_duration':round(sum(durations)/len(durations),1) if durations else None,'wait_samples':len(waits),'duration_samples':len(durations),'throughput':[{'date':str(d),'completed':n} for d,n in throughput]}
+    return {'waiting':counts.get('WAITING',0),'called':counts.get('CALLED',0),'completed':counts.get('COMPLETED',0),'skipped':counts.get('SKIPPED',0),'cancelled':counts.get('CANCELLED',0),'business_date':str(today),'completed_today':counts_today.get('COMPLETED',0),'skipped_today':counts_today.get('SKIPPED',0),'average_wait':round(sum(waits)/len(waits),1) if waits else None,'average_duration':round(sum(durations)/len(durations),1) if durations else None,'wait_samples':len(waits),'duration_samples':len(durations),'throughput':[{'date':str(d),'completed':n} for d,n in throughput]}
 
 @universal.get('/owner/business/<int:business_id>')
 @login_required
@@ -427,8 +452,11 @@ def qr(business_id):
     if request.args.get('ui')=='react':
         path='/app'+path
     base=current_app.config.get('PUBLIC_BASE_URL') or request.url_root.rstrip('/')
-    image=qrcode.make(base.rstrip('/')+path)
+    return qr_response(base.rstrip('/')+path,f'{business.slug}-queue.png')
+
+def qr_response(url, filename):
+    image=qrcode.make(url)
     buffer=io.BytesIO()
     image.save(buffer,format='PNG')
     buffer.seek(0)
-    return send_file(buffer,mimetype='image/png',as_attachment=request.args.get('download')=='1',download_name=f'{business.slug}-queue.png',max_age=0)
+    return send_file(buffer,mimetype='image/png',as_attachment=request.args.get('download')=='1',download_name=filename,max_age=0)

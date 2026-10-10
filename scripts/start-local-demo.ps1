@@ -1,8 +1,9 @@
 param(
-    [ValidateSet('setup','start','info','stop-postgres')][string]$Action = 'start',
+    [ValidateSet('setup','start','restart','info','stop-postgres')][string]$Action = 'start',
     [string]$LanAddress = '',
     [switch]$MobileHotspot,
     [switch]$Https,
+    [int]$Port=0,
     [string]$PythonPath = ''
 )
 $ErrorActionPreference = 'Stop'
@@ -25,8 +26,28 @@ if ($LanAddress) {
         if ($demoNetwork.NetworkCategory -ne 'Private') { throw 'LAN mode requires a trusted Windows Private network. No firewall or network settings were changed.' }
     }
 }
-$demoArguments = @('scripts/local_demo.py', $Action)
+$demoScript = Join-Path $demoRoot 'scripts\local_demo.py'
+if ($Action -eq 'restart') {
+    $demoPidFile = Join-Path $demoRoot '.tmp\flask-demo-process.json'
+    if (Test-Path -LiteralPath $demoPidFile) {
+        $demoRecord = Get-Content -LiteralPath $demoPidFile -Raw | ConvertFrom-Json
+        if ([System.IO.Path]::GetFullPath($demoRecord.root) -ne [System.IO.Path]::GetFullPath($demoRoot)) { throw 'Process record belongs to another workspace.' }
+        $demoProcess = Get-Process -Id $demoRecord.pid -ErrorAction SilentlyContinue
+        if ($demoProcess) {
+            $demoCommand = (Get-CimInstance Win32_Process -Filter "ProcessId=$($demoRecord.pid)").CommandLine
+            if ($demoProcess.StartTime.ToUniversalTime().Ticks.ToString() -ne $demoRecord.process_start_ticks -or $demoCommand -notlike "*$demoScript*") { throw 'Process identity changed; no process was stopped.' }
+            $demoListeners = @(Get-NetTCPConnection -State Listen -LocalPort $demoRecord.port -ErrorAction SilentlyContinue)
+            if (-not $demoListeners -or @($demoListeners | Where-Object { $_.OwningProcess -ne $demoRecord.pid -or $_.LocalAddress -ne $demoRecord.address }).Count) { throw 'Listener identity changed; no process was stopped.' }
+            Stop-Process -Id $demoRecord.pid -ErrorAction Stop
+            Wait-Process -Id $demoRecord.pid -Timeout 10 -ErrorAction SilentlyContinue
+        }
+        Remove-Item -LiteralPath $demoPidFile
+    }
+    $Action = 'start'
+}
+$demoArguments = @($demoScript, $Action)
 if ($LanAddress) { $demoArguments += @('--lan-address', $LanAddress) }
 if ($Https) { $demoArguments += '--https' }
+if ($Port) { $demoArguments += @('--port', [string]$Port) }
 & $PythonPath @demoArguments
 exit $LASTEXITCODE

@@ -112,7 +112,7 @@ def test_react_four_experiences_postgres(react_server,viewport):
         accessible(staff);accessible(display)
         staff.screenshot(path=f'evidence/react-staff-{viewport["width"]}.png',full_page=True)
         display.screenshot(path=f'evidence/react-display-{viewport["width"]}.png',full_page=True)
-        staff.get_by_role('button',name='Complete',exact=True).click()
+        staff.get_by_role('button',name='Mark Reviewed',exact=True).click()
         expect(customer.locator('.status-badge')).to_have_text('COMPLETED',timeout=12000)
         expect(owner.locator('.metric').filter(has_text='Completed').locator('strong')).to_have_text('1',timeout=12000)
         owner.get_by_role('link',name='Ticket history',exact=True).click()

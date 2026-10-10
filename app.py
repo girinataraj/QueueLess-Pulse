@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from config import Config
 from models import db, Staff, Service, Ticket, TicketEvent, Business, Branch, Membership, ServiceAssignment
 from access import current_user, allowed_services, require_service
-from universal import universal, display_rows, public_services, reception_services
+from universal import universal, display_rows, public_services, reception_services, business_day
 
 
 def create_app(test_config=None):
@@ -408,9 +408,9 @@ def create_app(test_config=None):
         for service in allowed_services():
             waiting=Ticket.query.filter_by(service_id=service.id,status='WAITING').order_by(Ticket.id).all()
             called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
-            today=datetime.now(ZoneInfo(service.branch.business.timezone)).date()
-            completed=Ticket.query.filter_by(service_id=service.id,status='COMPLETED',business_date=today).count()
-            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number} for t in waiting], 'called':{'id':called.id,'number':called.display_number} if called else None, 'completed_today': completed})
+            today,start,end=business_day(service.branch.business)
+            terminal=Ticket.query.filter(Ticket.service_id==service.id,Ticket.finished_at>=start,Ticket.finished_at<end)
+            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number,'business_date':str(t.business_date)} for t in waiting], 'called':{'id':called.id,'number':called.display_number,'business_date':str(called.business_date)} if called else None, 'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today)})
         return jsonify(rows)
 
     @app.get('/display')

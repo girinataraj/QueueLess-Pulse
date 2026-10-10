@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from flask import Blueprint, abort, current_app, jsonify, make_response, request, session
-from access import current_user, login_required, owner_business, owned_businesses
+from access import current_user, login_required, owner_business, owned_businesses, readable_services, reception_service
 from models import db, Business, Branch, Service, Membership, ServiceAssignment, Ticket, StaffInvite
-from universal import public_business, public_services, reception_services, display_rows, statistics, service_for, aware, make_invitation
+from universal import public_business, public_services, reception_services, display_rows, statistics, service_for, aware, make_invitation, history_filters, qr_response
 
 api = Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -94,6 +94,21 @@ def my_tickets():
 def staff_queues():
     return current_app.view_functions['staff_live']()
 
+@api.get('/reception/queues')
+def reception_queues():
+    rows=display_rows(readable_services())
+    base=(current_app.config.get('PUBLIC_BASE_URL') or request.url_root.rstrip('/')).rstrip('/')
+    for row in rows:
+        row['patient_url']=f"{base}/app/b/{row['business_slug']}/service/{row['service_id']}"
+    return jsonify(rows)
+
+@api.get('/staff/services/<int:service_id>/qr.png')
+def service_qr(service_id):
+    service=reception_service(service_id)
+    base=(current_app.config.get('PUBLIC_BASE_URL') or request.url_root.rstrip('/')).rstrip('/')
+    return qr_response(f'{base}/app/b/{service.branch.business.slug}/service/{service.id}',
+                       f'{service.branch.business.slug}-service-{service.id}.png')
+
 def action(endpoint, **kwargs):
     response = invoke(endpoint, **kwargs)
     return jsonify(resource_path=response.headers.get('Location', ''))
@@ -166,7 +181,7 @@ def accept(token):
 
 @api.get('/owner/businesses/<int:business_id>/history')
 def history(business_id):
-    owner_business(business_id)
+    business=owner_business(business_id)
     query = Ticket.query.join(Service).join(Branch).filter(Branch.business_id == business_id, Ticket.status.in_(('COMPLETED', 'SKIPPED')))
     status = request.args.get('status')
     if status:
@@ -177,14 +192,13 @@ def history(business_id):
         sid = request.args.get('service_id', type=int)
         service_for(business_id, sid)
         query = query.filter(Ticket.service_id == sid)
-    if request.args.get('date'):
-        query = query.filter(Ticket.business_date == request.args.get('date'))
+    query=history_filters(query,business)
     page = request.args.get('page', 1, type=int)
     if page is None or page < 1:
         abort(400, 'Invalid page.')
     result = db.paginate(query.order_by(Ticket.id.desc()).statement, page=page, per_page=25, error_out=False)
     return jsonify(page=result.page, pages=result.pages, total=result.total,
-                   items=[{'number': t.display_number, 'date': str(t.business_date), 'service': t.service.name, 'branch': t.service.branch.name, 'status': t.status,
+                   items=[{'number': t.display_number, 'date': str(t.business_date), 'finished_at': aware(t.finished_at).isoformat() if t.finished_at else None, 'service': t.service.name, 'branch': t.service.branch.name, 'status': t.status,
                            'events': [{'action': e.event_type, 'at': aware(e.timestamp).isoformat()} for e in t.events]} for t in result.items])
 
 @api.get('/display/<slug>')
