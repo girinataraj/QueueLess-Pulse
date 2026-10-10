@@ -99,7 +99,9 @@ def display_rows(services):
     rows=[]
     for service in services:
         called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
-        rows.append({'service_id':service.id,'service_name':service.name,'branch_name':service.branch.name,'counter_label':service.counter_label,'currently_called':called.display_number if called else '---','waiting_count':Ticket.query.filter_by(service_id=service.id,status='WAITING').count()})
+        today=datetime.now(ZoneInfo(service.branch.business.timezone)).date()
+        completed=Ticket.query.filter_by(service_id=service.id,status='COMPLETED',business_date=today).count()
+        rows.append({'service_id':service.id,'service_name':service.name,'branch_name':service.branch.name,'business_name':service.branch.business.name,'business_slug':service.branch.business.slug,'counter_label':service.counter_label,'currently_called':called.display_number if called else '---','waiting_count':Ticket.query.filter_by(service_id=service.id,status='WAITING').count(),'completed_today':completed})
     return rows
 
 @universal.route('/owner/register',methods=['GET','POST'])
@@ -320,15 +322,16 @@ def aware(value):
 def statistics(business_id):
     query=Ticket.query.join(Service).join(Branch).filter(Branch.business_id==business_id)
     counts=dict(query.with_entities(Ticket.status,func.count(Ticket.id)).group_by(Ticket.status).all())
+    business=db.session.get(Business,business_id)
+    today=datetime.now(ZoneInfo(business.timezone)).date()
+    counts_today=dict(query.filter(Ticket.business_date==today).with_entities(Ticket.status,func.count(Ticket.id)).group_by(Ticket.status).all())
     # Mean computed from actual persisted timestamps; no fabricated AI metric.
     called=query.filter(Ticket.called_at.is_not(None)).all()
     waits=[max(0,(aware(t.called_at)-aware(t.created_at)).total_seconds()/60) for t in called]
     completed=query.filter(Ticket.status=='COMPLETED',Ticket.called_at.is_not(None),Ticket.finished_at.is_not(None)).all()
     durations=[max(0,(aware(t.finished_at)-aware(t.called_at)).total_seconds()/60) for t in completed]
-    business=db.session.get(Business,business_id)
-    today=datetime.now(ZoneInfo(business.timezone)).date()
     throughput=query.filter(Ticket.business_date>=today-timedelta(days=6),Ticket.status=='COMPLETED').with_entities(Ticket.business_date,func.count(Ticket.id)).group_by(Ticket.business_date).order_by(Ticket.business_date).all()
-    return {'waiting':counts.get('WAITING',0),'called':counts.get('CALLED',0),'completed':counts.get('COMPLETED',0),'skipped':counts.get('SKIPPED',0),'cancelled':counts.get('CANCELLED',0),'average_wait':round(sum(waits)/len(waits),1) if waits else None,'average_duration':round(sum(durations)/len(durations),1) if durations else None,'wait_samples':len(waits),'duration_samples':len(durations),'throughput':[{'date':str(d),'completed':n} for d,n in throughput]}
+    return {'waiting':counts.get('WAITING',0),'called':counts.get('CALLED',0),'completed':counts.get('COMPLETED',0),'skipped':counts.get('SKIPPED',0),'cancelled':counts.get('CANCELLED',0),'completed_today':counts_today.get('COMPLETED',0),'skipped_today':counts_today.get('SKIPPED',0),'average_wait':round(sum(waits)/len(waits),1) if waits else None,'average_duration':round(sum(durations)/len(durations),1) if durations else None,'wait_samples':len(waits),'duration_samples':len(durations),'throughput':[{'date':str(d),'completed':n} for d,n in throughput]}
 
 @universal.get('/owner/business/<int:business_id>')
 @login_required

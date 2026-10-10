@@ -177,6 +177,8 @@ def history(business_id):
         sid = request.args.get('service_id', type=int)
         service_for(business_id, sid)
         query = query.filter(Ticket.service_id == sid)
+    if request.args.get('date'):
+        query = query.filter(Ticket.business_date == request.args.get('date'))
     page = request.args.get('page', 1, type=int)
     if page is None or page < 1:
         abort(400, 'Invalid page.')

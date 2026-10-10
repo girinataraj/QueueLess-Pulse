@@ -408,7 +408,9 @@ def create_app(test_config=None):
         for service in allowed_services():
             waiting=Ticket.query.filter_by(service_id=service.id,status='WAITING').order_by(Ticket.id).all()
             called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
-            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number} for t in waiting], 'called':{'id':called.id,'number':called.display_number} if called else None})
+            today=datetime.now(ZoneInfo(service.branch.business.timezone)).date()
+            completed=Ticket.query.filter_by(service_id=service.id,status='COMPLETED',business_date=today).count()
+            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number} for t in waiting], 'called':{'id':called.id,'number':called.display_number} if called else None, 'completed_today': completed})
         return jsonify(rows)
 
     @app.get('/display')

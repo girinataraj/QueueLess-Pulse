@@ -15,9 +15,28 @@ function Profile({ data }: { data: OwnerBusiness }) {
   const update=useAction<Action>('/owner/businesses/'+data.business.id);
   return <section className="card" id="profile"><h2>Business profile</h2><Form fields={businessFields} initial={{name:data.business.name,category:data.business.category,timezone:data.business.timezone,description:data.business.description}} submit="Save profile" onSubmit={update.mutateAsync} busy={update.isPending} error={update.error}/></section>;
 }
+function TodayHistory({ businessId, timezone }: { businessId: number, timezone: string }) {
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const today = formatter.format(new Date());
+  const query = useLive<History>(`/owner/businesses/${businessId}/history?date=${today}`, 5000);
+  return (
+    <div className="card table-wrap" style={{marginTop: '1.5rem'}}>
+      <h3>Today's History</h3>
+      <table>
+        <thead><tr><th>Token</th><th>Status</th><th>Service</th></tr></thead>
+        <tbody>
+          {query.data?.items.map((t, i) => <tr key={i}><td>{t.number}</td><td>{t.status}</td><td>{t.service}</td></tr>)}
+        </tbody>
+      </table>
+      {!query.data?.items.length && <p className="hint">No tickets completed or skipped today.</p>}
+      <Link to={`/owner/business/${businessId}/history?date=${today}`} className="text-link">View full today's audit →</Link>
+    </div>
+  );
+}
+
 export function OwnerDashboard() {
   const {businessId=''}=useParams();const query=useLive<OwnerBusiness>('/owner/businesses/'+businessId,4000);const data=query.data;
-  return <QueryState query={query}>{data && <><Heading eyebrow={'YOUR BUSINESSES / '+data.business.category} title={data.business.name} description={'Business time: '+data.business.timezone+' · One active ticket per service'}><div className="actions"><Link className="button button-secondary" to={'/b/'+data.business.slug}>Customer portal</Link><Link className="button button-primary" to={'/b/'+data.business.slug+'/display'}>Reception display</Link></div></Heading><nav className="section-nav" aria-label="Business sections">{['overview','branches','services','team','profile'].map(s=><a key={s} href={'#'+s}>{s[0]!.toUpperCase()+s.slice(1)}</a>)}<Link to={'/owner/business/'+businessId+'/history'}>Ticket history</Link></nav><section id="overview"><div className="section-heading"><h2>Queue overview</h2><Connection query={query}/></div><Analytics stats={data.stats}/></section><section id="branches"><div className="section-heading"><h2>Branches</h2><span>{data.branches.length} locations</span></div><div className="card-grid">{data.branches.map(b=><BranchCard key={b.id} branch={b} slug={data.business.slug}/>)}</div><CreateBranch businessId={data.business.id}/></section><section id="services"><h2>Services</h2><div className="card-grid">{data.services.map(s=><ServiceEditor key={s.id} service={s} businessId={data.business.id}/>)}</div><CreateService data={data}/></section><section id="team"><h2>Team & permissions</h2><div className="card-grid">{data.members.map(m=><MemberCard key={m.id} member={m} data={data}/>)}</div><TeamTools businessId={data.business.id} slug={data.business.slug}/></section><Profile data={data}/></>}</QueryState>;
+  return <QueryState query={query}>{data && <><Heading eyebrow={'YOUR BUSINESSES / '+data.business.category} title={data.business.name} description={'Business time: '+data.business.timezone+' · One active ticket per service'}><div className="actions"><Link className="button button-secondary" to={'/b/'+data.business.slug}>Customer portal</Link><Link className="button button-primary" to={'/b/'+data.business.slug+'/display'}>Reception display</Link></div></Heading><nav className="section-nav" aria-label="Business sections">{['overview','branches','services','team','profile'].map(s=><a key={s} href={'#'+s}>{s[0]!.toUpperCase()+s.slice(1)}</a>)}<Link to={'/owner/business/'+businessId+'/history'}>Ticket history</Link></nav><section id="overview"><div className="section-heading"><h2>Queue overview</h2><Connection query={query}/></div><Analytics stats={data.stats}/><TodayHistory businessId={data.business.id} timezone={data.business.timezone}/></section><section id="branches"><div className="section-heading"><h2>Branches</h2><span>{data.branches.length} locations</span></div><div className="card-grid">{data.branches.map(b=><BranchCard key={b.id} branch={b} slug={data.business.slug}/>)}</div><CreateBranch businessId={data.business.id}/></section><section id="services"><h2>Services</h2><div className="card-grid">{data.services.map(s=><ServiceEditor key={s.id} service={s} businessId={data.business.id}/>)}</div><CreateService data={data}/></section><section id="team"><h2>Team & permissions</h2><div className="card-grid">{data.members.map(m=><MemberCard key={m.id} member={m} data={data}/>)}</div><TeamTools businessId={data.business.id} slug={data.business.slug}/></section><Profile data={data}/></>}</QueryState>;
 }
 export function HistoryPage() {
   const {businessId=''}=useParams();const [params,setParams]=useSearchParams();const query=useLive<History>('/owner/businesses/'+businessId+'/history?'+params.toString());
