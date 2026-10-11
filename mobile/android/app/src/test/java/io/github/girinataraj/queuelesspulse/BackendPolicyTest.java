@@ -22,6 +22,15 @@ public class BackendPolicyTest {
         assertFalse(policy.allowsChallenge("evil.com", "QueueLess Pulse restricted demo"));
         assertFalse(policy.allowsChallenge("approved.onrender.com", "Other realm"));
     }
+    @Test public void invitationReuseRequiresFirstAttemptAndPinnedChallenge() {
+        String host="approved.onrender.com", realm="QueueLess Pulse restricted demo", page="https://approved.onrender.com/app/staff/reception";
+        assertTrue(policy.mayReuseInvitation(host,realm,page,true,true));
+        assertFalse(policy.mayReuseInvitation(host,realm,page,false,true));
+        assertFalse(policy.mayReuseInvitation(host,realm,page,true,false));
+        assertFalse(policy.mayReuseInvitation("evil.com",realm,page,true,true));
+        assertFalse(policy.mayReuseInvitation(host,"Other realm",page,true,true));
+        assertFalse(policy.mayReuseInvitation(host,realm,"https://evil.com/app/",true,true));
+    }
     @Test public void downloadRequiresAuthorizedQrEndpointAtPinnedOrigin() {
         assertTrue(policy.allowsQrDownload("https://approved.onrender.com/api/v1/staff/services/1/qr.png?download=1"));
         assertTrue(policy.allowsQrDownload("https://approved.onrender.com/owner/business/1/qr.png?ui=react"));

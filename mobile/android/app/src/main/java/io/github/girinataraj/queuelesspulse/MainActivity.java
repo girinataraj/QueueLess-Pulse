@@ -65,6 +65,12 @@ public class MainActivity extends BridgeActivity {
                 if (!policy.allowsChallenge(host, realm) || !policy.allows(webView.getUrl())) {
                     handler.cancel(); return;
                 }
+                // New fetch paths may challenge again. Reuse only this Activity's
+                // invitation on a first attempt; rejected credentials prompt again.
+                if (policy.mayReuseInvitation(host, realm, webView.getUrl(), handler.useHttpAuthUsernamePassword(),
+                        invitationUser != null && invitationPassword != null)) {
+                    handler.proceed(invitationUser, invitationPassword); return;
+                }
                 LinearLayout fields = new LinearLayout(MainActivity.this);
                 fields.setOrientation(LinearLayout.VERTICAL);
                 int padding = (int)(24 * getResources().getDisplayMetrics().density);

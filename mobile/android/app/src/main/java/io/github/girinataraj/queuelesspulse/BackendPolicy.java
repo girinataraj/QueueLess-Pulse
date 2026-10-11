@@ -26,6 +26,9 @@ final class BackendPolicy {
     boolean allowsChallenge(String host, String realm) {
         return hostname.equals(host) && "QueueLess Pulse restricted demo".equals(realm);
     }
+    boolean mayReuseInvitation(String host, String realm, String page, boolean firstAttempt, boolean available) {
+        return firstAttempt && available && allowsChallenge(host, realm) && allows(page);
+    }
     boolean allowsQrDownload(String url) {
         URI uri = parse(url);
         return allows(url) && uri != null && uri.getPath().endsWith("/qr.png")
