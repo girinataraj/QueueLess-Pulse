@@ -1,4 +1,5 @@
-# REVIEW ONLY: this separate paid infrastructure requires explicit approval.
+# WITHDRAWN: historical paid proposal. DO NOT APPLY under the strict $0 budget.
+# Use render.free-staging.yaml only after separate free-resource/deployment approval.
 services:
   - type: web
     name: queueless-pulse-staging

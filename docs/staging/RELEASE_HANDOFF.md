@@ -55,14 +55,14 @@ The generated `evidence\android\QueueLess-Pulse-Verification.apk` is an actual s
 
 ## Deployment approval required
 
-No staging URL exists yet. `render.staging.yaml` is a validated proposal for a NEW web service `queueless-pulse-staging` and NEW PostgreSQL 18 database `queueless-pulse-staging-db` in Singapore. It does not reference or alter `queueless-pulse-demo` or its database. Automatic deployments are off.
+The budget is strictly **$0 / INR 0**. No card, paid plan, paid disk, paid preview, upgrade or billable add-on is authorized. No staging URL exists yet. The historical paid `render.staging.yaml` is **withdrawn and must not be applied**. The review-only `render.free-staging.yaml` proposes exactly one NEW Render Free web service, `queueless-pulse-staging-free`, with automatic deployments off, no Render database and no disk. Validation now checks this free-only proposal. It does not reference the protected hosted demo or its database.
 
-The workspace already has its single allowed free Render PostgreSQL instance. Proposed compute is Starter web + Basic-256mb PostgreSQL, with 1 GB storage. Render's published example is about $13/month compute plus $0.30/month storage, before taxes, bandwidth and build overages; reconfirm Dashboard pricing before creating anything. No paid resources have been created. Sources: https://render.com/docs/free and https://render.com/articles/how-much-does-cloud-application-hosting-cost-for-small-businesses.
+The workspace's free Render PostgreSQL slot is occupied. A **new separate Neon Free project** is the proposed database alternative, subject to explicit provider/project approval. No project has been created and no application database has been switched. The full quotas, safeguards and connection requirements are in [ZERO_COST_STAGING.md](ZERO_COST_STAGING.md).
 
-After explicit approval to publish the candidate and incur the selected hosting costs:
+After separate explicit approval for the free resources and deployment:
 
-1. Push this feature branch and create a separate PR without merging main. Require backend/PostgreSQL/security and Android jobs to pass. Linux Gunicorn verification remains in CI; this Windows laptop has no installed WSL/Docker runtime.
-2. Provision only the new staging resources. Confirm database identity and disable external PostgreSQL access (`ipAllowList: []`). Supply a fresh gateway username; generate separate strong gateway/session secrets in environment management. Do not reuse localhost/hosted-demo credentials.
+1. Require the feature PR's backend/PostgreSQL/security and Android checks to pass. Deploy its verified commit directly; do not merge main. Linux Gunicorn verification remains in CI.
+2. Recheck the Render workspace's included usage, no-card status and Neon Free account eligibility. Stop if a card or paid option is required. Create only the new approved Neon Free project, preferably PostgreSQL 18 in Singapore, and the new Free web service. Confirm the actual database name and role are isolated from every protected demo. Use the direct TLS connection, not the transaction-pooler endpoint. Supply a fresh gateway username and separate strong gateway/session secrets through environment management; never copy localhost/hosted credentials.
 3. Set PUBLIC_BASE_URL to the actual assigned HTTPS origin and TRUSTED_HOSTS to that hostname alone. Build reproducible React assets with `scripts/render-build.sh`; launch using `scripts/start-staging.sh` (Gunicorn two workers, four threads, safe access logs).
 4. Check managed TLS, health, gateway rejection/valid access, secure session cookies, CSRF, assets/SPA routing and forwarded-IP throttling. Register a fresh staging Owner privately behind the gateway; create exactly one fictional hospital, Main Reception, Eye Consultation, a Receptionist role and an active assigned Doctor using real authorized workflows. Any synthetic population must be explicitly scoped to this new database; do not copy passwords or recovery tokens from protected demos.
 5. Verify Reception QR decoding/download/print, patient issuance/ETA, live updates, FIFO/Complete/Skip, Owner business-local reviews/history, unassigned staff denial and second-tenant isolation using synthetic records. Capture sanitized evidence.
@@ -78,6 +78,6 @@ Rollback means selecting a previously verified staging commit and checking schem
 
 ## Remaining release limits
 
-Staging creation and spending approval, candidate publication/remote CI, live Linux/HTTPS verification and the connected APK acceptance are pending. Do not announce the new deployment as live or the connected APK as verified before those steps pass.
+Free-resource/provider approval, final remote CI, live HTTPS verification and connected APK acceptance are required. No paid deployment is an alternative under this budget. Do not announce the new deployment as live or the connected APK as verified before those steps pass.
 
 Only invited technical evaluators and synthetic data are authorized. A formal operator, privacy contact, approved retention policy and legally reviewed terms/privacy policy remain unresolved. Existing draft legal documentation is retained. No claim of legal approval, real-patient readiness or unrestricted commercial release is made.

@@ -1,4 +1,4 @@
-"""Validate the review-only Blueprint against Render's authoritative schema."""
+"""Validate the free-only review proposal against Render's authoritative schema."""
 import json
 from pathlib import Path
 import urllib.request
@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[1]
 with urllib.request.urlopen('https://render.com/schema/render.yaml.json',timeout=30) as response:
     schema = json.load(response)
-blueprint = yaml.safe_load((ROOT/'render.staging.yaml').read_text())
+blueprint = yaml.safe_load((ROOT/'render.free-staging.yaml').read_text())
 errors = list(Draft202012Validator(schema).iter_errors(blueprint))
 def concise(error):
     if error.context:
@@ -19,12 +19,15 @@ if errors:
         for line in concise(error)[:12]: print(line)
     raise SystemExit(1)
 service = blueprint['services'][0]
-database = blueprint['databases'][0]
-assert len(blueprint['services']) == len(blueprint['databases']) == 1
-assert service['name'] == 'queueless-pulse-staging' and service['autoDeployTrigger']=='off'
-assert database['name']=='queueless-pulse-staging-db' and database['ipAllowList']==[]
-assert database['databaseName']=='queueless_pulse_staging'
+assert len(blueprint['services']) == 1 and not blueprint.get('databases')
+assert service['name'] == 'queueless-pulse-staging-free'
+assert service['plan'] == 'free' and service['autoDeployTrigger'] == 'off'
+assert not any(key in service for key in ('disk', 'scaling', 'previews', 'numInstances'))
 assert {item['key'] for item in service['envVars']} >= {'APP_STAGE','STAGING_DATABASE_NAME','DATABASE_URL','SECRET_KEY','DEMO_MODE','DEMO_ACCESS_USER','DEMO_ACCESS_PASSWORD','PUBLIC_BASE_URL','TRUSTED_HOSTS'}
+env = {item['key']: item for item in service['envVars']}
+assert env['DATABASE_URL'] == {'key': 'DATABASE_URL', 'sync': False}
+assert env['STAGING_DATABASE_NAME']['value'] == 'queueless_pulse_staging'
+assert not any('fromDatabase' in item or 'fromService' in item for item in service['envVars'])
 (ROOT/'evidence').mkdir(exist_ok=True)
-(ROOT/'evidence/staging-blueprint.json').write_text(json.dumps({'official_schema':'passed','isolated_resources':'passed','deployed':False},indent=2))
-print('PASS: official Render schema and separate-resource safety checks; not deployed')
+(ROOT/'evidence/free-staging-blueprint.json').write_text(json.dumps({'official_schema':'passed','free_only_resources':'passed','database_provisioned':False,'deployed':False},indent=2))
+print('PASS: official Render schema, free-only service and isolated external database input; not deployed')
