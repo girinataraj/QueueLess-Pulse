@@ -11,3 +11,18 @@
 @media (max-width: 600px) { .page-heading { align-items: flex-start; flex-direction: column; gap: .5rem; } .metric-grid { grid-template-columns: 1fr 1fr; gap: .6rem; } .metric-grid strong { font-size: 2rem; } .analytics-grid,.form-grid { grid-template-columns: 1fr; } .card { padding: 1.2rem; } .brand { font-size: 1.05rem; gap: .5rem; } .brand-mark { width: 34px; height: 34px; } .account .button { padding: .5rem; font-size: .75rem; } .ticket-card { padding: 1.2rem; } .section-heading { flex-wrap: wrap; } .dialog-content { padding: 1.5rem; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
 @media (display-mode: fullscreen) { .app-header,.sidebar,.app-footer { display: none; } .app-shell { display: block; } }
+.queue-metrics { margin: 1rem 0; grid-template-columns: 1fr 1fr; }
+.reception-layout { display: grid; grid-template-columns: minmax(0,300px) minmax(0,1fr); gap: 2rem; align-items: start; }
+.reception-qr { text-align: center; overflow-wrap: anywhere; }
+.reception-qr .qr { width: min(280px,100%); height: auto; margin: 0 auto 1rem; }
+.reception-qr .actions { justify-content: center; margin: 1rem 0; }
+.reception-status .metric-grid { grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); }
+.today-reviews { margin-top: 1.5rem; }
+.waiting-list small { margin-left: auto; color: var(--muted); }
+@media (max-width: 700px) { .reception-layout { grid-template-columns: minmax(0,1fr); gap: 1rem; } }
+@media print {
+  .app-header,.sidebar,.app-footer,.skip-link,.page-heading,.notice,.no-print,.reception-status { display: none !important; }
+  .app-shell { display: block; } .content { padding: 0; } .reception-layout { display: block; }
+  .reception-card { break-inside: avoid; border: 1px solid #222; box-shadow: none; margin: 1cm; }
+  .reception-qr .qr { width: 7cm; } .reception-qr p,.patient-link { color: #111; }
+}

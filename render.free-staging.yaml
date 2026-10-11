@@ -1,0 +1,43 @@
+# REVIEW ONLY. A separate approval is required before provisioning or deployment.
+# Database credentials must belong ONLY to a new, approved Neon Free project.
+services:
+  - type: web
+    name: queueless-pulse-staging-free
+    runtime: python
+    repo: https://github.com/girinataraj/QueueLess-Pulse
+    branch: codex/industry-grade-staging-apk
+    region: singapore
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: bash scripts/render-build.sh
+    startCommand: bash scripts/start-staging.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: NODE_VERSION
+        value: 24.16.0
+      - key: APP_STAGE
+        value: staging
+      - key: APP_ENV
+        value: production
+      - key: STAGING_DATABASE_NAME
+        value: queueless_pulse_staging
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+      - key: STAGING_AUTH_MODE
+        value: application
+      - key: OWNER_REGISTRATION_ENABLED
+        value: "false"
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
+        value: "3"
+      - key: BUSINESS_TIMEZONE
+        value: Asia/Kolkata

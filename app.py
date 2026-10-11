@@ -6,13 +6,13 @@ import uuid
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import click
-from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from config import Config
 from models import db, Staff, Service, Ticket, TicketEvent, Business, Branch, Membership, ServiceAssignment
 from access import current_user, allowed_services, require_service
-from universal import universal, display_rows, public_services, reception_services
+from universal import universal, display_rows, public_services, reception_services, business_day
 
 
 def create_app(test_config=None):
@@ -30,6 +30,13 @@ def create_app(test_config=None):
     ZoneInfo(app.config['BUSINESS_TIMEZONE'])
     if app.config['AVERAGE_SERVICE_TIME_MINUTES'] <= 0:
         raise RuntimeError('Average service time must be positive')
+    if app.config['APP_STAGE'] == 'staging':
+        from staging import validate_configuration
+        validate_configuration(app.config)
+        options = dict(app.config['SQLALCHEMY_ENGINE_OPTIONS'])
+        options['connect_args'] = {**options.get('connect_args', {}), 'sslmode': 'require'}
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = options
+        app.config['SESSION_COOKIE_NAME'] = 'queueless_staging'
     db.init_app(app)
     app.register_blueprint(universal)
     from api import api
@@ -44,9 +51,14 @@ def create_app(test_config=None):
         session.setdefault('owner_id', str(uuid.uuid4()))
         return session['csrf_token']
 
+    def csp_nonce():
+        if not hasattr(g, 'csp_nonce'):
+            g.csp_nonce = secrets.token_urlsafe(24)
+        return g.csp_nonce
+
     @app.context_processor
     def helpers():
-        return {'csrf_token': csrf_token, 'request_key': lambda: str(uuid.uuid4()), 'current_user': current_user}
+        return {'owner_registration_enabled': app.config['OWNER_REGISTRATION_ENABLED'], 'csrf_token': csrf_token, 'csp_nonce': csp_nonce(), 'request_key': lambda: str(uuid.uuid4()), 'current_user': current_user}
 
     @app.before_request
     def csrf_check():
@@ -61,6 +73,15 @@ def create_app(test_config=None):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+        if app.config['PRODUCTION']:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000'
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'self'; base-uri 'self'; object-src 'none'; "
+                "frame-ancestors 'none'; form-action 'self'; connect-src 'self'; "
+                "img-src 'self' data:; font-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-" + csp_nonce() + "'"
+            )
         if not request.path.startswith('/static/'):
             response.headers['Cache-Control'] = 'no-store'
         return response
@@ -408,7 +429,9 @@ def create_app(test_config=None):
         for service in allowed_services():
             waiting=Ticket.query.filter_by(service_id=service.id,status='WAITING').order_by(Ticket.id).all()
             called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
-            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number} for t in waiting], 'called':{'id':called.id,'number':called.display_number} if called else None})
+            today,start,end=business_day(service.branch.business)
+            terminal=Ticket.query.filter(Ticket.service_id==service.id,Ticket.finished_at>=start,Ticket.finished_at<end)
+            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number,'business_date':str(t.business_date)} for t in waiting], 'called':{'id':called.id,'number':called.display_number,'business_date':str(called.business_date)} if called else None, 'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today)})
         return jsonify(rows)
 
     @app.get('/display')

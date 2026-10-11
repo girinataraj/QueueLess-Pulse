@@ -1,5 +1,8 @@
 # DRAFT — Restricted demonstration terms
 
+Candidate staging access update (deployment approval pending): the new Free staging release permits anonymous synthetic queue issuance and Public Display access, while Reception/Doctor/Owner retain normal session logins and new-owner registration is disabled. The original hosted demo retains its evaluator gateway. This change does not approve real-patient use or commercial launch. See ../staging/SESSION_AUTH_STAGING.md.
+
+
 Status: factual review draft, not an approved legal agreement. Operator/company, governing law, legal address, dispute process and privacy contact are unresolved. Do not invent these details or publish this draft as approved commercial terms.
 
 ## Intended access and use

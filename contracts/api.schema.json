@@ -169,13 +169,21 @@
         },
         "demo_mode": {
           "type": "boolean"
+        },
+        "gateway_required": {
+          "type": "boolean"
+        },
+        "owner_registration_enabled": {
+          "type": "boolean"
         }
       },
       "required": [
         "csrf_token",
         "user",
         "memberships",
-        "demo_mode"
+        "demo_mode",
+        "gateway_required",
+        "owner_registration_enabled"
       ],
       "additionalProperties": false
     },
@@ -290,11 +298,16 @@
         },
         "number": {
           "type": "string"
+        },
+        "business_date": {
+          "type": "string",
+          "format": "date"
         }
       },
       "required": [
         "id",
-        "number"
+        "number",
+        "business_date"
       ],
       "additionalProperties": false
     },
@@ -334,6 +347,16 @@
               "type": "null"
             }
           ]
+        },
+        "completed_today": {
+          "type": "integer"
+        },
+        "skipped_today": {
+          "type": "integer"
+        },
+        "business_date": {
+          "type": "string",
+          "format": "date"
         }
       },
       "required": [
@@ -344,7 +367,10 @@
         "counter",
         "active",
         "waiting",
-        "called"
+        "called",
+        "completed_today",
+        "skipped_today",
+        "business_date"
       ],
       "additionalProperties": false
     },
@@ -416,6 +442,16 @@
             ],
             "additionalProperties": false
           }
+        },
+        "completed_today": {
+          "type": "integer"
+        },
+        "skipped_today": {
+          "type": "integer"
+        },
+        "business_date": {
+          "type": "string",
+          "format": "date"
         }
       },
       "required": [
@@ -428,7 +464,10 @@
         "average_duration",
         "wait_samples",
         "duration_samples",
-        "throughput"
+        "throughput",
+        "completed_today",
+        "skipped_today",
+        "business_date"
       ],
       "additionalProperties": false
     },
@@ -553,6 +592,16 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "finished_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
@@ -561,7 +610,8 @@
               "service",
               "branch",
               "status",
-              "events"
+              "events",
+              "finished_at"
             ],
             "additionalProperties": false
           }
@@ -597,6 +647,22 @@
           },
           "waiting_count": {
             "type": "integer"
+          },
+          "business_name": {
+            "type": "string"
+          },
+          "business_slug": {
+            "type": "string"
+          },
+          "completed_today": {
+            "type": "integer"
+          },
+          "skipped_today": {
+            "type": "integer"
+          },
+          "business_date": {
+            "type": "string",
+            "format": "date"
           }
         },
         "required": [
@@ -605,7 +671,12 @@
           "branch_name",
           "counter_label",
           "currently_called",
-          "waiting_count"
+          "waiting_count",
+          "business_name",
+          "business_slug",
+          "completed_today",
+          "skipped_today",
+          "business_date"
         ],
         "additionalProperties": false
       }
@@ -674,6 +745,66 @@
         "error"
       ],
       "additionalProperties": false
+    },
+    "ReceptionList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "integer"
+          },
+          "service_name": {
+            "type": "string"
+          },
+          "branch_name": {
+            "type": "string"
+          },
+          "counter_label": {
+            "type": "string"
+          },
+          "currently_called": {
+            "type": "string"
+          },
+          "waiting_count": {
+            "type": "integer"
+          },
+          "business_name": {
+            "type": "string"
+          },
+          "business_slug": {
+            "type": "string"
+          },
+          "completed_today": {
+            "type": "integer"
+          },
+          "skipped_today": {
+            "type": "integer"
+          },
+          "business_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "patient_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "service_name",
+          "branch_name",
+          "counter_label",
+          "currently_called",
+          "waiting_count",
+          "business_name",
+          "business_slug",
+          "completed_today",
+          "skipped_today",
+          "business_date",
+          "patient_url"
+        ],
+        "additionalProperties": false
+      }
     }
   }
 }

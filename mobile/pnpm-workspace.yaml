@@ -1,0 +1,4 @@
+# GHSA-w5hq-g745-h8pq: xcode uses only uuid.v4; retain the compatible CJS API.
+# Verified by tests/config.test.mjs and Capacitor sync/build; no audit exclusions.
+overrides:
+  'xcode>uuid': 11.1.1

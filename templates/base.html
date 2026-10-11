@@ -17,7 +17,7 @@
 {% block content %}{% endblock %}</main>
 <footer class="footer"><div class="container">QueueLess Pulse · More time for what matters.</div></footer>
 {% block scripts %}{% endblock %}
-<script>
+<script nonce="{{ csp_nonce }}">
 if ('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 document.addEventListener('submit',event=>{const form=event.target;if(form.method.toUpperCase()==='POST')form.querySelectorAll('button[type=submit]').forEach(button=>{button.disabled=true;button.textContent='Working…';});});
 window.addEventListener('pageshow',event=>{if(event.persisted) location.reload();});

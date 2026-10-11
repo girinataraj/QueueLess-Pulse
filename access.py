@@ -48,3 +48,20 @@ def require_service(service):
     if not membership or (membership.role != 'owner' and not ServiceAssignment.query.filter_by(membership_id=membership.id,service_id=service.id).first()):
         abort(404, 'Queue unavailable or access denied.')
     return membership
+
+def readable_services():
+    """Active business membership permits reception reads, never queue actions."""
+    user = current_user()
+    if not user:
+        abort(401)
+    return db.session.scalars(select(Service).join(Branch).join(Business).join(
+        Membership, Membership.business_id == Business.id).where(
+        Membership.staff_id == user.id, Membership.is_active.is_(True),
+        Business.is_active.is_(True), Branch.is_active.is_(True),
+        Service.is_active.is_(True)).distinct().order_by(Service.id)).all()
+
+def reception_service(service_id):
+    service = next((s for s in readable_services() if s.id == service_id), None)
+    if service is None:
+        abort(404, 'Queue unavailable or access denied.')
+    return service

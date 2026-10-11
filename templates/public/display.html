@@ -4,7 +4,7 @@
 <div class="public-display"><div class="header-banner"><span class="eyebrow">{{ business.name if business else "RECEPTION" }}</span><h2>Now Serving</h2><button class="btn btn-light" id="fullscreen" type="button">Full screen</button><p id="last-update" role="status">Connecting…</p></div><div class="display-grid" id="display-grid"></div></div>
 {% endblock %}
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 async function updateDisplay() {
     try {
         const response = await fetch({{ (display_url or '/api/display_data')|tojson }}, {cache: 'no-store'});

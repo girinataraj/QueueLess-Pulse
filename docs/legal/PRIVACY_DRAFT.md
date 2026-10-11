@@ -1,5 +1,8 @@
 # DRAFT — Privacy notice for a restricted evaluator demonstration
 
+Candidate staging access update (deployment approval pending): the new Free staging release permits anonymous synthetic queue issuance and Public Display access, while Reception/Doctor/Owner retain normal session logins and new-owner registration is disabled. The original hosted demo retains its evaluator gateway. This change does not approve real-patient use or commercial launch. See ../staging/SESSION_AUTH_STAGING.md.
+
+
 Status: implementation-based draft for review, not legally approved. A formal operator, jurisdiction and privacy contact have not been confirmed. Do not represent the project name, GitHub username or an employer as a registered controller/company.
 
 ## Scope and permitted use

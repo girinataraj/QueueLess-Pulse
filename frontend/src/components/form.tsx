@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { Values } from '../api/client';
 import { ErrorMessage } from './feedback';
 import { Button } from './ui/button';
-export type Field = { name: string; label: string; type?: 'text' | 'password' | 'email' | 'textarea' | 'select' | 'checkbox' | 'multiselect' | 'number'; required?: boolean; min?: number; max?: number; pattern?: string; options?: { value: string; label: string }[]; hint?: string };
+export type Field = { name: string; label: string; type?: 'text' | 'password' | 'email' | 'textarea' | 'select' | 'checkbox' | 'multiselect' | 'number' | 'date'; required?: boolean; min?: number; max?: number; pattern?: string; options?: { value: string; label: string }[]; hint?: string };
 export function formSchema(fields: Field[]) {
   return z.record(z.string(), z.union([z.string(), z.boolean(), z.array(z.string())])).superRefine((values, ctx) => {
     for (const f of fields) {

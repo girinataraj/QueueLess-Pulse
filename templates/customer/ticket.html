@@ -16,7 +16,7 @@
 </div></div>
 {% endblock %}
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 let lastStatus = {{ ticket.status|tojson }};
 async function updateStatus() {
     try {
