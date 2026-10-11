@@ -43,7 +43,7 @@ def main():
         forbidden=[]
         for path in filter(None,paths):
             parts=Path(path).parts
-            if any(p in ('QueueLess_MVP','.venv','.tmp','node_modules','instance','evidence','test-results','playwright-report') for p in parts) or path=='seed.py' or Path(path).suffix in ('.db','.sqlite','.sqlite3','.pem','.key','.p12','.pfx') or (Path(path).name.startswith('.env') and path!='.env.example'):
+            if any(p in ('QueueLess_MVP','.venv','.tmp','node_modules','instance','evidence','test-results','playwright-report','.gradle','build') for p in parts) or path=='seed.py' or Path(path).suffix in ('.db','.sqlite','.sqlite3','.pem','.key','.p12','.pfx','.jks','.keystore','.apk','.aab') or (Path(path).name.startswith('.env') and path!='.env.example') or path=='mobile/android/local.properties':
                 forbidden.append(path);continue
             target=(index/path).resolve()
             if not target.is_relative_to(index):raise SystemExit('Invalid tracked path')

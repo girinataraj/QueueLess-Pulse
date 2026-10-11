@@ -48,7 +48,7 @@ jobs:
           python - <<'PY'
           import xml.etree.ElementTree as ET
           suite = ET.parse('evidence/ci.xml').getroot().find('testsuite')
-          assert int(suite.attrib['tests']) >= 98
+          assert int(suite.attrib['tests']) >= 144
           assert all(suite.attrib[key] == '0' for key in ('failures', 'errors', 'skipped'))
           frontend = ET.parse('evidence/frontend.xml').getroot()
           cases = list(frontend.iter('testcase'))
@@ -62,3 +62,39 @@ jobs:
         with:
           name: verification-evidence
           path: evidence/
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.25.0'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - run: pnpm --dir mobile install --frozen-lockfile --strict-peer-dependencies
+      - run: pnpm --dir mobile test
+      - run: pnpm --dir mobile audit --audit-level=low
+      - run: pnpm --dir mobile run sync
+      - name: Native policy tests, lint and installation APK
+        working-directory: mobile/android
+        run: bash gradlew testVerificationDebugUnitTest lintVerificationRelease assembleVerificationDebug exportRuntimeDependencies --console=plain
+      - run: python scripts/audit-android-dependencies.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-verification
+          path: |
+            mobile/android/app/build/outputs/apk/verification/debug/*.apk
+            mobile/android/app/build/test-results/
+            mobile/android/app/build/reports/
+            evidence/android/

@@ -35,3 +35,13 @@ core
 core.*
 seed.py
 static/local-demo/
+*.apk
+*.aab
+*.jks
+*.keystore
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/build/
+mobile/android/app/src/main/assets/public/
+mobile/android/app/src/main/assets/capacitor.config.json
+mobile/android/app/src/main/assets/capacitor.plugins.json

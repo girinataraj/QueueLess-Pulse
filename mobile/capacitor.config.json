@@ -1,0 +1,13 @@
+{
+  "appId": "io.github.girinataraj.queuelesspulse",
+  "appName": "QueueLess Pulse Staging",
+  "webDir": "www",
+  "loggingBehavior": "none",
+  "server": {"hostname": "localhost", "androidScheme": "https", "cleartext": false},
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "loggingBehavior": "none",
+    "includePlugins": []
+  }
+}

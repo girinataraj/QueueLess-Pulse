@@ -1,0 +1,53 @@
+# REVIEW ONLY: this separate paid infrastructure requires explicit approval.
+services:
+  - type: web
+    name: queueless-pulse-staging
+    runtime: python
+    repo: https://github.com/girinataraj/QueueLess-Pulse
+    branch: codex/industry-grade-staging-apk
+    region: singapore
+    plan: starter
+    autoDeployTrigger: "off"
+    buildCommand: bash scripts/render-build.sh
+    startCommand: bash scripts/start-staging.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: NODE_VERSION
+        value: 24.16.0
+      - key: APP_STAGE
+        value: staging
+      - key: APP_ENV
+        value: production
+      - key: STAGING_DATABASE_NAME
+        value: queueless_pulse_staging
+      - key: DATABASE_URL
+        fromDatabase:
+          name: queueless-pulse-staging-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_ACCESS_USER
+        sync: false
+      - key: DEMO_ACCESS_PASSWORD
+        generateValue: true
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
+        value: "3"
+      - key: BUSINESS_TIMEZONE
+        value: Asia/Kolkata
+databases:
+  - name: queueless-pulse-staging-db
+    databaseName: queueless_pulse_staging
+    user: queueless_staging_user
+    region: singapore
+    plan: basic-256mb
+    postgresMajorVersion: "18"
+    diskSizeGB: 1
+    ipAllowList: []
