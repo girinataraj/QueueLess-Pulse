@@ -28,7 +28,7 @@ Local links:
 Restart the unchanged integrated fallback:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\Users\girin\.codex\worktrees\erode-monday-integration\DR\start-local-demo.ps1' -Action restart -Port 5001
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\Users\girin\.codex\worktrees\erode-monday-integration\DR\scripts\start-local-demo.ps1' -Action restart -Port 5001
 ```
 
 No Monday refresh has been executed. Use the existing integration's backup-first, date-guarded refresh documentation on October 12 in Asia/Kolkata; never import this fixture into a hosted database. Outstanding called tickets must be completed or skipped before Call Next. Existing history must remain intact.
