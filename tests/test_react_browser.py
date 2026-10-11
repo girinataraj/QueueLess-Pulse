@@ -53,7 +53,7 @@ def test_react_four_experiences_postgres(react_server,viewport):
         owner.get_by_label('Confirm password',exact=False).fill('react-owner-password-123')
         owner.get_by_role('button',name='Create account',exact=True).click()
         expect(owner.get_by_role('heading',name='Your businesses')).to_be_visible()
-        expect(owner.get_by_role('status').filter(has_text='Restricted evaluator demo')).to_be_visible()
+        expect(owner.get_by_role('status').filter(has_text='Synthetic demonstration')).to_be_visible()
         owner.get_by_label('Business name',exact=False).fill('Meridian Clinic')
         owner.get_by_label('Business URL',exact=False).fill('meridian-clinic')
         owner.get_by_role('button',name='Create business',exact=True).click()

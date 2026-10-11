@@ -17,19 +17,14 @@ public class BackendPolicyTest {
             assertFalse(value, policy.allows(value));
         }
     }
-    @Test public void restrictsAuthenticationChallenge() {
-        assertTrue(policy.allowsChallenge("approved.onrender.com", "QueueLess Pulse restricted demo"));
-        assertFalse(policy.allowsChallenge("evil.com", "QueueLess Pulse restricted demo"));
-        assertFalse(policy.allowsChallenge("approved.onrender.com", "Other realm"));
+    @Test public void patientEntryIsPinnedHttps() {
+        assertEquals("https://approved.onrender.com/app/b/erode-eye-clinic-demo/service/1", policy.patientEntry());
+        assertTrue(policy.allows(policy.patientEntry()));
     }
-    @Test public void invitationReuseRequiresFirstAttemptAndPinnedChallenge() {
-        String host="approved.onrender.com", realm="QueueLess Pulse restricted demo", page="https://approved.onrender.com/app/staff/reception";
-        assertTrue(policy.mayReuseInvitation(host,realm,page,true,true));
-        assertFalse(policy.mayReuseInvitation(host,realm,page,false,true));
-        assertFalse(policy.mayReuseInvitation(host,realm,page,true,false));
-        assertFalse(policy.mayReuseInvitation("evil.com",realm,page,true,true));
-        assertFalse(policy.mayReuseInvitation(host,"Other realm",page,true,true));
-        assertFalse(policy.mayReuseInvitation(host,realm,"https://evil.com/app/",true,true));
+    @Test public void refusesEmptyRelativeAndAlternateSchemeUrls() {
+        for (String value : new String[]{null, "", "/app/", "//approved.onrender.com/app/", "content://secret", "data:text/html,secret"}) {
+            assertFalse(policy.allows(value));
+        }
     }
     @Test public void downloadRequiresAuthorizedQrEndpointAtPinnedOrigin() {
         assertTrue(policy.allowsQrDownload("https://approved.onrender.com/api/v1/staff/services/1/qr.png?download=1"));

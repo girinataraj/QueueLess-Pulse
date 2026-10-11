@@ -11,7 +11,11 @@ def validate_configuration(config):
     if not config['PRODUCTION'] or config['DEBUG']:
         raise RuntimeError('Staging requires production mode with debug disabled')
     if len(config['SECRET_KEY']) < 32 or not config['DEMO_MODE']:
-        raise RuntimeError('Staging requires strong secrets and the restricted evaluator gateway')
+        raise RuntimeError('Staging requires strong secrets and explicit synthetic demonstration mode')
+    if config.get('STAGING_AUTH_MODE', 'basic') not in ('basic', 'application'):
+        raise RuntimeError('Staging requires an explicit supported authentication mode')
+    if config.get('OWNER_REGISTRATION_ENABLED', False):
+        raise RuntimeError('Unrestricted owner registration is disabled in staging')
     origin = config['PUBLIC_BASE_URL']
     parsed = urlsplit(origin)
     host = parsed.hostname or ''

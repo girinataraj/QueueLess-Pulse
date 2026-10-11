@@ -23,5 +23,7 @@ class Config:
     RATE_LIMIT_QUEUE = int(os.getenv('RATE_LIMIT_QUEUE', '120'))
     RATE_LIMIT_TRUSTED_PROXY_HOPS = int(os.getenv('RATE_LIMIT_TRUSTED_PROXY_HOPS', '0'))
     DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+    STAGING_AUTH_MODE = os.getenv('STAGING_AUTH_MODE', 'basic')
+    OWNER_REGISTRATION_ENABLED = os.getenv('OWNER_REGISTRATION_ENABLED', 'false' if APP_STAGE == 'staging' else 'true').lower() == 'true'
     DEMO_ACCESS_USER = os.getenv('DEMO_ACCESS_USER', '')
     DEMO_ACCESS_PASSWORD = os.getenv('DEMO_ACCESS_PASSWORD', '')

@@ -169,13 +169,21 @@
         },
         "demo_mode": {
           "type": "boolean"
+        },
+        "gateway_required": {
+          "type": "boolean"
+        },
+        "owner_registration_enabled": {
+          "type": "boolean"
         }
       },
       "required": [
         "csrf_token",
         "user",
         "memberships",
-        "demo_mode"
+        "demo_mode",
+        "gateway_required",
+        "owner_registration_enabled"
       ],
       "additionalProperties": false
     },

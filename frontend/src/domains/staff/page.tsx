@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { session } from '../../api/client';
 import type { Action, Queue, QueueList, ReceptionList } from '../../api/contracts';
 import { Link } from 'react-router-dom';
 import { QueryState, useLive, useAction, ErrorMessage, Connection } from '../../components/feedback';
@@ -16,6 +18,7 @@ export function StaffPage() {
 }
 
 export function ReceptionPage() {
+  const auth=useQuery({queryKey:['session'],queryFn:session});
   const query=useLive<ReceptionList>('/reception/queues',3000);
   return (
     <>
@@ -32,7 +35,7 @@ export function ReceptionPage() {
                      <p>Scan to receive your digital token.</p>
                      <a className="text-link patient-link" href={q.patient_url}>Open patient queue</a>
                      <div className="actions no-print"><a href={`/api/v1/staff/services/${q.service_id}/qr.png?download=1`} className="button button-secondary" download>Download QR</a><Button variant="secondary" onClick={() => window.print()}>Print QR</Button></div>
-                     <p className="hint">Restricted synthetic demo: the browser gateway is required.</p>
+                     {auth.data?.demo_mode && <p className="hint">Fictional demonstration only.{auth.data.gateway_required && ' The browser gateway is required.'}</p>}
                    </div>
                    <div className="reception-status">
                      <div className="current-ticket"><span>Currently serving · {q.counter_label}</span><div className="token-display">{q.currently_called}</div></div>

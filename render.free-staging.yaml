@@ -29,10 +29,10 @@ services:
         generateValue: true
       - key: DEMO_MODE
         value: "true"
-      - key: DEMO_ACCESS_USER
-        sync: false
-      - key: DEMO_ACCESS_PASSWORD
-        generateValue: true
+      - key: STAGING_AUTH_MODE
+        value: application
+      - key: OWNER_REGISTRATION_ENABLED
+        value: "false"
       - key: PUBLIC_BASE_URL
         sync: false
       - key: TRUSTED_HOSTS

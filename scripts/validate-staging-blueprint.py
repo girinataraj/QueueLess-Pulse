@@ -23,8 +23,11 @@ assert len(blueprint['services']) == 1 and not blueprint.get('databases')
 assert service['name'] == 'queueless-pulse-staging-free'
 assert service['plan'] == 'free' and service['autoDeployTrigger'] == 'off'
 assert not any(key in service for key in ('disk', 'scaling', 'previews', 'numInstances'))
-assert {item['key'] for item in service['envVars']} >= {'APP_STAGE','STAGING_DATABASE_NAME','DATABASE_URL','SECRET_KEY','DEMO_MODE','DEMO_ACCESS_USER','DEMO_ACCESS_PASSWORD','PUBLIC_BASE_URL','TRUSTED_HOSTS'}
+assert {item['key'] for item in service['envVars']} >= {'APP_STAGE','STAGING_DATABASE_NAME','DATABASE_URL','SECRET_KEY','DEMO_MODE','STAGING_AUTH_MODE','OWNER_REGISTRATION_ENABLED','PUBLIC_BASE_URL','TRUSTED_HOSTS'}
 env = {item['key']: item for item in service['envVars']}
+assert env['STAGING_AUTH_MODE']['value'] == 'application'
+assert env['OWNER_REGISTRATION_ENABLED']['value'] == 'false'
+assert not {'DEMO_ACCESS_USER','DEMO_ACCESS_PASSWORD'} & env.keys()
 assert env['DATABASE_URL'] == {'key': 'DATABASE_URL', 'sync': False}
 assert env['STAGING_DATABASE_NAME']['value'] == 'queueless_pulse_staging'
 assert not any('fromDatabase' in item or 'fromService' in item for item in service['envVars'])

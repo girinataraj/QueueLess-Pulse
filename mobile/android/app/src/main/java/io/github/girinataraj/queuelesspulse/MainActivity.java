@@ -11,10 +11,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.net.http.SslError;
-import android.text.InputType;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import androidx.appcompat.app.AlertDialog;
 import android.content.Intent;
 import android.print.PrintManager;
 import android.widget.Toast;
@@ -23,13 +19,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import javax.net.ssl.HttpsURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends BridgeActivity {
-    private String invitationUser;
-    private String invitationPassword;
     private byte[] pendingQr;
     private final ExecutorService downloads = Executors.newSingleThreadExecutor();
     @Override public void onCreate(Bundle state) {
@@ -62,41 +55,7 @@ public class MainActivity extends BridgeActivity {
                 handler.cancel(); // No certificate warning bypass or alternate trust store.
             }
             @Override public void onReceivedHttpAuthRequest(WebView webView, HttpAuthHandler handler, String host, String realm) {
-                if (!policy.allowsChallenge(host, realm) || !policy.allows(webView.getUrl())) {
-                    handler.cancel(); return;
-                }
-                // New fetch paths may challenge again. Reuse only this Activity's
-                // invitation on a first attempt; rejected credentials prompt again.
-                if (policy.mayReuseInvitation(host, realm, webView.getUrl(), handler.useHttpAuthUsernamePassword(),
-                        invitationUser != null && invitationPassword != null)) {
-                    handler.proceed(invitationUser, invitationPassword); return;
-                }
-                LinearLayout fields = new LinearLayout(MainActivity.this);
-                fields.setOrientation(LinearLayout.VERTICAL);
-                int padding = (int)(24 * getResources().getDisplayMetrics().density);
-                fields.setPadding(padding, padding, padding, padding);
-                EditText user = new EditText(MainActivity.this);
-                user.setHint("Private invitation username");
-                user.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL);
-                EditText password = new EditText(MainActivity.this);
-                password.setHint("Private invitation password");
-                password.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    user.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO);
-                    password.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO);
-                }
-                fields.addView(user); fields.addView(password);
-                new AlertDialog.Builder(MainActivity.this).setTitle("Restricted synthetic-data staging")
-                    .setMessage("Use your private invitation for " + host + ".")
-                    .setView(fields)
-                    .setPositiveButton("Continue", (dialog, which) -> {
-                        invitationUser = user.getText().toString();
-                        invitationPassword = password.getText().toString();
-                        handler.proceed(invitationUser, invitationPassword);
-                        password.getText().clear();
-                    })
-                    .setNegativeButton("Cancel", (dialog, which) -> handler.cancel())
-                    .setOnCancelListener(dialog -> handler.cancel()).show();
+                handler.cancel(); // Application sessions only; never prompt or send Basic credentials.
             }
         });
         view.setDownloadListener((url, agent, disposition, mime, length) -> {
@@ -104,8 +63,6 @@ public class MainActivity extends BridgeActivity {
                 Toast.makeText(this,"Only service QR downloads are allowed",Toast.LENGTH_LONG).show(); return;
             }
             final String cookie = CookieManager.getInstance().getCookie(url);
-            final String user = invitationUser;
-            final String password = invitationPassword;
             downloads.execute(() -> {
                 HttpsURLConnection connection = null;
                 try {
@@ -113,8 +70,6 @@ public class MainActivity extends BridgeActivity {
                     connection.setInstanceFollowRedirects(false);
                     connection.setConnectTimeout(10000); connection.setReadTimeout(10000);
                     if (cookie != null) connection.setRequestProperty("Cookie",cookie);
-                    if (user != null && password != null) connection.setRequestProperty("Authorization", "Basic "+
-                        android.util.Base64.encodeToString((user+":"+password).getBytes(StandardCharsets.UTF_8),android.util.Base64.NO_WRAP));
                     if (connection.getResponseCode()!=200 || !"image/png".equals(connection.getContentType())) throw new java.io.IOException("QR not available");
                     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
                     try (InputStream input=connection.getInputStream()) {
@@ -133,11 +88,11 @@ public class MainActivity extends BridgeActivity {
                         startActivityForResult(destination,701);
                     });
                 } catch (java.io.IOException error) {
-                    runOnUiThread(() -> Toast.makeText(this,"QR download failed. Check your invitation and connection.",Toast.LENGTH_LONG).show());
+                    runOnUiThread(() -> Toast.makeText(this,"QR download failed. Sign in to Reception and check your connection.",Toast.LENGTH_LONG).show());
                 } finally { if (connection!=null) connection.disconnect(); }
             });
         });
-        view.loadUrl(BuildConfig.BACKEND_ORIGIN + "/app/");
+        view.loadUrl(policy.patientEntry());
     }
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
@@ -151,7 +106,7 @@ public class MainActivity extends BridgeActivity {
         } catch (java.io.IOException error) { Toast.makeText(this,"Could not save QR",Toast.LENGTH_LONG).show(); }
     }
     @Override public void onDestroy() {
-        invitationUser=null; invitationPassword=null; pendingQr=null; downloads.shutdownNow();
+        pendingQr=null; downloads.shutdownNow();
         super.onDestroy();
     }
 }

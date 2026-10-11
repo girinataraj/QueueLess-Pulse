@@ -23,12 +23,7 @@ final class BackendPolicy {
         URI uri = parse(url);
         return uri != null && secure(uri) && hostname.equals(uri.getHost());
     }
-    boolean allowsChallenge(String host, String realm) {
-        return hostname.equals(host) && "QueueLess Pulse restricted demo".equals(realm);
-    }
-    boolean mayReuseInvitation(String host, String realm, String page, boolean firstAttempt, boolean available) {
-        return firstAttempt && available && allowsChallenge(host, realm) && allows(page);
-    }
+    String patientEntry() { return "https://"+hostname+"/app/b/erode-eye-clinic-demo/service/1"; }
     boolean allowsQrDownload(String url) {
         URI uri = parse(url);
         return allows(url) && uri != null && uri.getPath().endsWith("/qr.png")

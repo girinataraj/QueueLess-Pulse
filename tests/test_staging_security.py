@@ -13,7 +13,7 @@ from test_postgres import pg_app
 
 
 def configuration(**overrides):
-    return dict(PRODUCTION=True, DEBUG=False, SECRET_KEY=secrets.token_hex(32), DEMO_MODE=True,
+    return dict(PRODUCTION=True, DEBUG=False, SECRET_KEY=secrets.token_hex(32), DEMO_MODE=True, OWNER_REGISTRATION_ENABLED=False,
                 PUBLIC_BASE_URL='https://queueless-staging.onrender.com',
                 TRUSTED_HOSTS=['queueless-staging.onrender.com'],
                 SQLALCHEMY_DATABASE_URI='postgresql://test@127.0.0.1/staging_test',

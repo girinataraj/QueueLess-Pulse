@@ -106,6 +106,8 @@ def display_rows(services):
 
 @universal.route('/owner/register',methods=['GET','POST'])
 def register():
+    if not current_app.config['OWNER_REGISTRATION_ENABLED']:
+        abort(403, 'Owner registration is closed. Use an existing account or contact the administrator.')
     if request.method=='POST':
         username,password,email=account_fields()
         if request.form.get('confirm_password') != password:

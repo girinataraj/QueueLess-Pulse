@@ -58,7 +58,7 @@ def create_app(test_config=None):
 
     @app.context_processor
     def helpers():
-        return {'csrf_token': csrf_token, 'csp_nonce': csp_nonce(), 'request_key': lambda: str(uuid.uuid4()), 'current_user': current_user}
+        return {'owner_registration_enabled': app.config['OWNER_REGISTRATION_ENABLED'], 'csrf_token': csrf_token, 'csp_nonce': csp_nonce(), 'request_key': lambda: str(uuid.uuid4()), 'current_user': current_user}
 
     @app.before_request
     def csrf_check():

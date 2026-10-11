@@ -1,12 +1,15 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { session } from '../../api/client';
 import { useState } from 'react';
 import type { BusinessList, PublicBusiness, Service, Ticket as TicketData, TicketList } from '../../api/contracts';
 import { useLive, QueryState, useAction, ErrorMessage, Connection } from '../../components/feedback';
 import { Button } from '../../components/ui/button';
 import { Heading } from '../../components/layout';
 export function Directory({ displays = false }: { displays?: boolean }) {
+  const auth=useQuery({queryKey:['session'],queryFn:session});
   const query = useLive<BusinessList>('/businesses');
-  return <><Heading eyebrow="LESS WAITING. BETTER SERVICE." title={displays ? 'Reception displays' : 'Your place in line. Your time back.'} description={displays ? 'Choose a business to open its live, public display.' : 'Find your business, choose a service and follow your queue from anywhere.'}/><QueryState query={query}><div className="card-grid">{query.data?.map(b => <Link key={b.id} to={'/b/'+b.slug+(displays ? '/display' : '')} className="card link-card"><span className="eyebrow">{b.category}</span><h2>{b.name}</h2><p>{b.description || 'Choose your branch and join the queue.'}</p><span className="text-link">{displays ? 'Open display' : 'View branches'} →</span></Link>)}</div>{!query.data?.length && <div className="empty-state"><h2>No businesses available yet</h2><p>New branches will appear here when they are ready.</p><Link to="/owner/register">Bring your business to Pulse</Link></div>}</QueryState></>;
+  return <><Heading eyebrow="LESS WAITING. BETTER SERVICE." title={displays ? 'Reception displays' : 'Your place in line. Your time back.'} description={displays ? 'Choose a business to open its live, public display.' : 'Find your business, choose a service and follow your queue from anywhere.'}/><QueryState query={query}><div className="card-grid">{query.data?.map(b => <Link key={b.id} to={'/b/'+b.slug+(displays ? '/display' : '')} className="card link-card"><span className="eyebrow">{b.category}</span><h2>{b.name}</h2><p>{b.description || 'Choose your branch and join the queue.'}</p><span className="text-link">{displays ? 'Open display' : 'View branches'} →</span></Link>)}</div>{!query.data?.length && <div className="empty-state"><h2>No businesses available yet</h2><p>New branches will appear here when they are ready.</p>{auth.data?.owner_registration_enabled && <Link to="/owner/register">Bring your business to Pulse</Link>}</div>}</QueryState></>;
 }
 export function ServiceCard({ service, branch }: { service: Service; branch: string }) {
   const [key] = useState(() => crypto.randomUUID()); const navigate = useNavigate();

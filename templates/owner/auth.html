@@ -7,4 +7,4 @@
 <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode=='register' else 'current-password' }}" minlength="{{ 12 if mode=='register' else 1 }}" maxlength="128" required>
 {% if mode=='register' %}<label for="confirm_password">Confirm password</label><input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" required>{% endif %}
 <button class="btn btn-primary btn-block" type="submit">{{ 'Create account' if mode=='register' else 'Sign in' }}</button></form>
-<p>{{ 'Already registered?' if mode=='register' else 'New to Pulse?' }} <a href="{{ url_for('universal.owner_login' if mode=='register' else 'universal.register') }}">{{ 'Sign in' if mode=='register' else 'Create an account' }}</a></p></div>{% endblock %}
+{% if mode=='register' or owner_registration_enabled %}<p>{{ 'Already registered?' if mode=='register' else 'New to Pulse?' }} <a href="{{ url_for('universal.owner_login' if mode=='register' else 'universal.register') }}">{{ 'Sign in' if mode=='register' else 'Create an account' }}</a></p>{% endif %}</div>{% endblock %}

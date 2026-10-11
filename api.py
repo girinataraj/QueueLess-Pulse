@@ -43,7 +43,8 @@ def invoke(endpoint, **kwargs):
 def bootstrap():
     user = current_user()
     memberships = Membership.query.filter_by(staff_id=user.id, is_active=True).all() if user else []
-    return jsonify(csrf_token=csrf(), demo_mode=current_app.config['DEMO_MODE'], user={'id': user.id, 'username': user.username, 'email': user.email} if user else None,
+    return jsonify(csrf_token=csrf(), demo_mode=current_app.config['DEMO_MODE'], gateway_required=current_app.config['DEMO_GATEWAY_ENABLED'],
+                   owner_registration_enabled=current_app.config['OWNER_REGISTRATION_ENABLED'], user={'id': user.id, 'username': user.username, 'email': user.email} if user else None,
                    memberships=[{'business_id': m.business_id, 'role': m.role} for m in memberships])
 
 @api.post('/auth/register')

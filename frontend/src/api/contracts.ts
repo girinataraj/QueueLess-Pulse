@@ -2,7 +2,7 @@
 export type Business = { id: number; slug: string; name: string; category: string; description: string; timezone: string; is_active: boolean };
 export type Branch = { id: number; business_id: number; name: string; address: string; is_active: boolean };
 export type Service = { id: number; branch_id: number; name: string; description: string; prefix: string; average_minutes: number; counter_label: string; is_active: boolean };
-export type Session = { csrf_token: string; user: { id: number; username: string; email: string | null } | null; memberships: Array<{ business_id: number; role: "owner" | "staff" }>; demo_mode: boolean };
+export type Session = { csrf_token: string; user: { id: number; username: string; email: string | null } | null; memberships: Array<{ business_id: number; role: "owner" | "staff" }>; demo_mode: boolean; gateway_required: boolean; owner_registration_enabled: boolean };
 export type BusinessList = Array<Business>;
 export type PublicBusiness = { business: Business; branches: Array<Branch>; services: Array<Service> };
 export type Status = "WAITING" | "CALLED" | "COMPLETED" | "SKIPPED" | "CANCELLED";

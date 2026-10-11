@@ -27,3 +27,11 @@ test('offline verification screen cannot impersonate a live queue', () => {
   assert.match(html, /awaiting approval/i);
   assert.doesNotMatch(html, /<script|password.*value=|<iframe/i);
 });
+
+test('connected Android uses sessions and never collects or forwards Basic credentials', () => {
+  const native=readFileSync(new URL('../android/app/src/main/java/io/github/girinataraj/queuelesspulse/MainActivity.java', import.meta.url),'utf8');
+  assert.doesNotMatch(native,/handler\.proceed|invitationUser|invitationPassword|AlertDialog|setRequestProperty\("Authorization"/);
+  assert.match(native,/handler\.cancel\(\);/);
+  assert.match(native,/CookieManager\.getInstance\(\)\.getCookie/);
+  assert.match(native,/view\.loadUrl\(policy\.patientEntry\(\)\)/);
+});

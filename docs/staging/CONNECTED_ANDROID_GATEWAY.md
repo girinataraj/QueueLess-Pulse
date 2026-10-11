@@ -1,3 +1,5 @@
+> Historical e50bb4c gateway fix. The new application-session candidate supersedes native Basic handling; see [SESSION_AUTH_STAGING.md](SESSION_AUTH_STAGING.md). It requires deployment approval.
+
 # Connected Android gateway verification
 
 The approved Free staging backend was deployed from
