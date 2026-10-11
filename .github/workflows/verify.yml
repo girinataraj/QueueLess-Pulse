@@ -66,7 +66,7 @@ jobs:
           assert all(suite.attrib[key] == '0' for key in ('failures', 'errors', 'skipped'))
           frontend = ET.parse('evidence/frontend.xml').getroot()
           cases = list(frontend.iter('testcase'))
-          assert len(cases) >= 16
+          assert len(cases) >= 18
           assert all(case.find(tag) is None for case in cases for tag in ('failure', 'error', 'skipped'))
           PY
       - run: python -m pip_audit --format json --output evidence/ci-advisories.json

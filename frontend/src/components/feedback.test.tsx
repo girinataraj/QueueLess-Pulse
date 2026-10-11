@@ -31,3 +31,15 @@ it('handles unauthorized and expired links explicitly', () => {
   view.rerender(<ErrorMessage error={new RequestError(410,'Invitation expired')}/>);
   expect(screen.getByRole('alert')).toHaveTextContent('Link unavailable');
 });
+
+it.each([
+  ['/app/owner/business/1/history', '/app/owner/login'],
+  ['/app/staff/reception', '/app/staff/login?experience=reception'],
+])('uses the correct application login after session expiry on %s', (path, login) => {
+  const previous = window.location.href;
+  try {
+    window.history.replaceState(null, '', path);
+    render(<ErrorMessage error={new RequestError(401, 'Sign in')}/>);
+    expect(screen.getByRole('link', {name: 'Sign in'})).toHaveAttribute('href', login);
+  } finally { window.history.replaceState(null, '', previous); }
+});

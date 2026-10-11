@@ -16,7 +16,8 @@ export function useLive<T>(path: string, interval?: number) { return useQuery({ 
 export function ErrorMessage({ error }: { error: Error | null }) {
   if (!error) return null;
   const status = error instanceof RequestError ? error.status : 0;
-  return <div className="notice error" role="alert"><strong>{status === 401 ? 'Sign in to continue' : status === 404 || status === 410 ? 'Link unavailable' : 'Unable to complete the request'}</strong><p>{error.message}</p>{status === 401 && <a href="/app/staff/login">Sign in</a>}</div>;
+  const signInPath = window.location.pathname.startsWith('/app/owner') ? '/app/owner/login' : window.location.pathname === '/app/staff/reception' ? '/app/staff/login?experience=reception' : '/app/staff/login';
+  return <div className="notice error" role="alert"><strong>{status === 401 ? 'Sign in to continue' : status === 404 || status === 410 ? 'Link unavailable' : 'Unable to complete the request'}</strong><p>{error.message}</p>{status === 401 && <a href={signInPath}>Sign in</a>}</div>;
 }
 export function Loading() { return <div role="status" aria-label="Loading" className="skeleton"><div/><div/><div/></div>; }
 export function QueryState({ query, children }: { query: UseQueryResult<unknown, Error>; children: ReactNode }) {
