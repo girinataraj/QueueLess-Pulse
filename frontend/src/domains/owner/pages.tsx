@@ -1,4 +1,8 @@
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+export { HistoryPage, TodayReviewsPage } from './history';
+import { OperationsOverview } from './operations';
+import { useState } from 'react';
+import { Tabs } from '../../components/system';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { Action, BusinessList, OwnerBusiness, History } from '../../api/contracts';
 import { Form } from '../../components/form';
 import { useLive, useAction, QueryState, Connection } from '../../components/feedback';
@@ -22,11 +26,22 @@ function TodayHistory({ businessId, date }: { businessId: number; date: string }
 
 export function OwnerDashboard() {
   const {businessId=''}=useParams();const query=useLive<OwnerBusiness>('/owner/businesses/'+businessId,4000);const data=query.data;
-  return <QueryState query={query}>{data && <><Heading eyebrow={'YOUR BUSINESSES / '+data.business.category} title={data.business.name} description={'Business time: '+data.business.timezone+' · One active ticket per service'}><div className="actions"><Link className="button button-secondary" to={'/b/'+data.business.slug}>Customer portal</Link><Link className="button button-primary" to={'/b/'+data.business.slug+'/display'}>Reception display</Link></div></Heading><nav className="section-nav" aria-label="Business sections">{['overview','reviews','branches','services','team','profile'].map(s=><a key={s} href={'#'+s}>{s[0]!.toUpperCase()+s.slice(1)}</a>)}<Link to={'/owner/business/'+businessId+'/history'}>Ticket history</Link></nav><section id="overview"><div className="section-heading"><h2>Queue overview</h2><Connection query={query}/></div><Analytics stats={data.stats}/><TodayHistory businessId={data.business.id} date={data.stats.business_date}/></section><section id="branches"><div className="section-heading"><h2>Branches</h2><span>{data.branches.length} locations</span></div><div className="card-grid">{data.branches.map(b=><BranchCard key={b.id} branch={b} slug={data.business.slug}/>)}</div><CreateBranch businessId={data.business.id}/></section><section id="services"><h2>Services</h2><div className="card-grid">{data.services.map(s=><ServiceEditor key={s.id} service={s} businessId={data.business.id}/>)}</div><CreateService data={data}/></section><section id="team"><h2>Team & permissions</h2><div className="card-grid">{data.members.map(m=><MemberCard key={m.id} member={m} data={data}/>)}</div><TeamTools businessId={data.business.id} slug={data.business.slug}/></section><Profile data={data}/></>}</QueryState>;
-}
-export function HistoryPage() {
-  const {businessId=''}=useParams();const [params,setParams]=useSearchParams();const query=useLive<History>('/owner/businesses/'+businessId+'/history?'+params.toString());
-  const owner=useLive<OwnerBusiness>('/owner/businesses/'+businessId);
-  const page=query.data?.page ?? 1;
-  return <><Heading eyebrow="BUSINESS AUDIT" title="Ticket history" description="Completed and skipped tickets, preserved for your business."><Link to={'/owner/business/'+businessId}>Back to dashboard</Link></Heading><section className="card"><Form fields={[{name:'date',label:'Date',type:'date',hint:'Business-local date; leave empty for all history.'},{name:'date_basis',label:'Date basis',type:'select',options:[{value:'issued',label:'Ticket issue date'},{value:'finished',label:'Review / skip date'}]},{name:'status',label:'Status',type:'select',options:[{value:'',label:'All terminal states'},{value:'COMPLETED',label:'Completed'},{value:'SKIPPED',label:'Skipped'}]},{name:'service_id',label:'Service',type:'select',options:[{value:'',label:'All services'},...(owner.data?.services.map(s=>({value:String(s.id),label:s.name})) ?? [])]}]} key={params.toString()} initial={{date:params.get('date') ?? '',date_basis:params.get('date_basis') ?? 'issued',status:params.get('status') ?? '',service_id:params.get('service_id') ?? ''}} submit="Filter history" onSubmit={async values=>{setParams(Object.fromEntries(Object.entries(values).map(([k,v])=>[k,String(v)])));}}/></section><QueryState query={query}><div className="card table-wrap" tabIndex={0} aria-label="Ticket history table" role="region"><table><caption>Completed and skipped tickets</caption><thead><tr><th scope="col">Issue date</th><th scope="col">Branch / Service</th><th scope="col">Token</th><th scope="col">Status</th><th scope="col">Audit trail</th></tr></thead><tbody>{query.data?.items.map((t,i)=><tr key={i}><td>{t.date}</td><td>{t.branch} / {t.service}</td><td>{t.number}</td><td>{t.status}</td><td>{t.events.map((e,j)=><p className="hint" key={j}>{e.action} · {new Date(e.at).toLocaleString()}</p>)}</td></tr>)}</tbody></table>{!query.data?.items.length && <p className="empty-state">No tickets match this filter.</p>}</div><div className="pagination"><span>{query.data?.total} tickets · Page {page} of {query.data?.pages || 1}</span>{page>1 && <button onClick={()=>setParams(prev=>{prev.set('page',String(page-1));return prev;})}>Previous</button>}{page<(query.data?.pages ?? 0) && <button onClick={()=>setParams(prev=>{prev.set('page',String(page+1));return prev;})}>Next</button>}</div></QueryState></>;
+  const [section,setSection]=useState('overview');
+  return <QueryState query={query}>{data && <>
+    <Heading eyebrow={'YOUR BUSINESSES / '+data.business.category} title={data.business.name} description={'Business time: '+data.business.timezone+' · One active ticket per service'}>
+      <div className="actions"><Link className="button button-secondary" to={'/b/'+data.business.slug}>Customer portal</Link><Link className="button button-primary" to={'/b/'+data.business.slug+'/display'}>Reception display</Link><Link className="button button-secondary" to={'/owner/business/'+businessId+'/history'}>Ticket history</Link></div>
+    </Heading>
+    <Tabs label="Business sections" value={section} onValueChange={setSection} items={[
+      {id:'overview',label:'Overview',content:<section id="overview">
+        <div className="section-heading"><h2>Queue overview</h2><Connection query={query}/></div>
+        <OperationsOverview businessId={data.business.id} waiting={data.stats.waiting} called={data.stats.called} completed={data.stats.completed_today} skipped={data.stats.skipped_today} date={data.stats.business_date}/>
+        <details className="card historical-details"><summary>Historical analytics — all recorded data</summary><Analytics stats={data.stats}/></details>
+      </section>},
+      {id:'reviews',label:"Today's Reviews",content:<TodayHistory businessId={data.business.id} date={data.stats.business_date}/>},
+      {id:'branches',label:'Branches',content:<section id="branches"><div className="section-heading"><h2>Branches</h2><span>{data.branches.length} locations</span></div><div className="card-grid">{data.branches.map(b=><BranchCard key={b.id} branch={b} slug={data.business.slug}/>)}</div><CreateBranch businessId={data.business.id}/></section>},
+      {id:'services',label:'Services',content:<section id="services"><h2>Services</h2><div className="card-grid">{data.services.map(s=><ServiceEditor key={s.id} service={s} businessId={data.business.id}/>)}</div><CreateService data={data}/></section>},
+      {id:'team',label:'Team',content:<section id="team"><h2>Team & permissions</h2><div className="card-grid">{data.members.map(m=><MemberCard key={m.id} member={m} data={data}/>)}</div><TeamTools businessId={data.business.id} slug={data.business.slug}/></section>},
+      {id:'profile',label:'Profile',content:<Profile data={data}/>}
+    ]}/>
+  </>}</QueryState>;
 }

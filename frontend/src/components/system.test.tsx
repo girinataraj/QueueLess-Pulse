@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { ConfirmationDialog, Drawer, Pagination, StatusBadge, TokenDisplay } from './system';
+import { ConfirmationDialog, Drawer, Pagination, StatusBadge, TokenDisplay, Tabs } from './system';
 
 describe('operational design system',()=>{
   it('retains a textual status rather than relying on color',()=>{
@@ -28,5 +28,13 @@ describe('operational design system',()=>{
     const onChange=vi.fn();render(<Pagination page={1} pages={2} onChange={onChange}/>);
     expect(screen.getByRole('button',{name:'Previous'})).toBeDisabled();
     await userEvent.click(screen.getByRole('button',{name:'Next'}));expect(onChange).toHaveBeenCalledWith(2);
+  });
+  it('supports tab keyboard navigation and preserves unsaved fields in inactive panels',async()=>{
+    function Example(){const [value,setValue]=useState('overview');return <Tabs label="Business sections" value={value} onValueChange={setValue} items={[{id:'overview',label:'Overview',content:<p>Actual queue metrics</p>},{id:'team',label:'Team',content:<label>Desk name<input/></label>}]}/>;}
+    const user=userEvent.setup();render(<Example/>);const overview=screen.getByRole('tab',{name:'Overview'});
+    overview.focus();await user.keyboard('{ArrowRight}');expect(screen.getByRole('tab',{name:'Team'})).toHaveFocus();
+    await user.type(screen.getByLabelText('Desk name'),'Reception A');screen.getByRole('tab',{name:'Team'}).focus();await user.keyboard('{Home}');
+    expect(overview).toHaveAttribute('aria-selected','true');expect(screen.getByLabelText('Desk name')).not.toBeVisible();
+    await user.keyboard('{End}');expect(screen.getByLabelText('Desk name')).toHaveValue('Reception A');
   });
 });

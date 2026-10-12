@@ -26,8 +26,8 @@ export function CreateService({ data }: { data: OwnerBusiness }) {
 }
 export function MemberCard({ member, data }: { member: Member; data: OwnerBusiness }) {
   const action=useAction<Action>('/owner/businesses/'+data.business.id+'/staff/'+member.id+'/permissions');
-  const fields: Field[]=[{name:'is_active',label:'Membership active',type:'checkbox'},{name:'service_ids',label:'Assigned services',type:'multiselect',options:data.services.map(s => ({value:String(s.id),label:(data.branches.find(b=>b.id===s.branch_id)?.name ?? '')+' · '+s.name}))}];
-  return <article className="card"><h3>{member.username}</h3><p>{member.role} · {member.is_active ? 'Active' : 'Revoked'}</p>{member.role==='staff' ? <Form fields={fields} initial={{is_active:member.is_active,service_ids:member.service_ids.map(String)}} submit="Save permissions" onSubmit={action.mutateAsync} busy={action.isPending} error={action.error}/> : <p className="hint">Owners can manage every service in this business.</p>}</article>;
+  const fields: Field[]=[{name:'is_active',label:'Membership active',type:'checkbox'},{name:'can_issue_walkins',label:'Reception walk-in issuance (no Doctor or Owner privileges)',type:'checkbox'},{name:'service_ids',label:'Assigned services',type:'multiselect',options:data.services.map(s => ({value:String(s.id),label:(data.branches.find(b=>b.id===s.branch_id)?.name ?? '')+' · '+s.name}))}];
+  return <article className="card"><h3>{member.username}</h3><p>{member.role} · {member.is_active ? 'Active' : 'Revoked'}</p>{member.role==='staff' ? <Form fields={fields} initial={{can_issue_walkins:member.can_issue_walkins,is_active:member.is_active,service_ids:member.service_ids.map(String)}} submit="Save permissions" onSubmit={values=>action.mutateAsync({...values,walkin_permission_set:true})} busy={action.isPending} error={action.error}/> : <p className="hint">Owners can manage every service in this business.</p>}</article>;
 }
 export function TeamTools({ businessId, slug }: { businessId: number; slug: string }) {
   const create=useAction<Action>('/owner/businesses/'+businessId+'/staff');const [url,setUrl]=useState('');

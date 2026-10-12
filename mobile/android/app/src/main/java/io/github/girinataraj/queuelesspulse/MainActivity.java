@@ -1,6 +1,7 @@
 package io.github.girinataraj.queuelesspulse;
 
 import com.getcapacitor.BridgeActivity;
+import androidx.activity.OnBackPressedCallback;
 import android.os.Bundle;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
@@ -38,7 +39,23 @@ public class MainActivity extends BridgeActivity {
         BackendPolicy policy = new BackendPolicy(BuildConfig.BACKEND_ORIGIN);
         // Remote React needs no native plugins. Never expose a privileged JS bridge.
         view.removeJavascriptInterface("androidBridge");
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                // Remote React deliberately has no Capacitor JS bridge. Handle
+                // its normal WebView history and modal dismissal explicitly.
+                view.evaluateJavascript("Boolean(document.querySelector('[role=dialog]'))", value -> {
+                    if ("true".equals(value)) {
+                        view.evaluateJavascript("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))", null);
+                    } else if (view.canGoBack()) {
+                        view.goBack();
+                    } else {
+                        finish();
+                    }
+                });
+            }
+        });
         view.setWebViewClient(new WebViewClient() {
+            private boolean firstRemotePage = true;
             @Override public boolean shouldOverrideUrlLoading(WebView webView, WebResourceRequest request) {
                 if (request.isForMainFrame() && request.getUrl().toString().equals(BuildConfig.BACKEND_ORIGIN+"/app/native-print")) {
                     PrintManager printer = (PrintManager)getSystemService(PRINT_SERVICE);
@@ -48,6 +65,10 @@ public class MainActivity extends BridgeActivity {
                 return !policy.allows(request.getUrl().toString());
             }
             @Override public void onPageFinished(WebView webView, String url) {
+                if (policy.allows(url) && firstRemotePage) {
+                    webView.clearHistory(); // Never go back to the internal installation screen.
+                    firstRemotePage = false;
+                }
                 if (policy.allows(url)) webView.evaluateJavascript(
                     "window.print=()=>{window.location.href='/app/native-print'};", null);
             }

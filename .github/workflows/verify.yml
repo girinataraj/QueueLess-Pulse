@@ -55,18 +55,18 @@ jobs:
       - run: pnpm --dir frontend run test --reporter=default --reporter=junit --outputFile=../evidence/frontend.xml
       - run: bash scripts/render-build.sh
       - run: pnpm --dir frontend audit --audit-level=low
-      - run: python -m compileall -q app.py api.py demo_access.py rate_limit.py models.py config.py access.py universal.py tests scripts
+      - run: python -m compileall -q app.py api.py operations.py queue_core.py demo_access.py rate_limit.py models.py config.py access.py universal.py tests scripts
       - run: python -m pytest -q --junitxml=evidence/ci.xml
       - name: Require zero failed or skipped backend/browser tests
         run: |
           python - <<'PY'
           import xml.etree.ElementTree as ET
           suite = ET.parse('evidence/ci.xml').getroot().find('testsuite')
-          assert int(suite.attrib['tests']) >= 161
+          assert int(suite.attrib['tests']) >= 180
           assert all(suite.attrib[key] == '0' for key in ('failures', 'errors', 'skipped'))
           frontend = ET.parse('evidence/frontend.xml').getroot()
           cases = list(frontend.iter('testcase'))
-          assert len(cases) >= 18
+          assert len(cases) >= 26
           assert all(case.find(tag) is None for case in cases for tag in ('failure', 'error', 'skipped'))
           PY
       - run: python -m pip_audit --format json --output evidence/ci-advisories.json

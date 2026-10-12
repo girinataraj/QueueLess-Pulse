@@ -311,7 +311,7 @@ def create_app(test_config=None):
 
     @app.get('/my-tickets')
     def my_tickets():
-        tickets = Ticket.query.filter_by(owner_id=session['owner_id'], clock=datetime).order_by(Ticket.id.desc()).limit(30).all() if session.get('owner_id') else []
+        tickets = Ticket.query.filter_by(owner_id=session['owner_id']).order_by(Ticket.id.desc()).limit(30).all() if session.get('owner_id') else []
         return render_template('customer/my_tickets.html', tickets=tickets)
 
     @app.post('/ticket/<token>/cancel')

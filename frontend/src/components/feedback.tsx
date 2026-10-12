@@ -12,7 +12,7 @@ export function useAction<T>(path: string, done?: (data: T) => void) {
   const queryClient = useQueryClient(); const toast = useContext(ToastContext);
   return useMutation({ mutationFn: (values: Values) => api<T>(path, values), onSuccess: async data => { await queryClient.invalidateQueries(); toast('Changes saved.'); done?.(data); } });
 }
-export function useLive<T>(path: string, interval?: number) { return useQuery({ queryKey: [path], queryFn: () => api<T>(path), refetchInterval: interval, retry: 1 }); }
+export function useLive<T>(path: string, interval?: number, enabled = true) { return useQuery({ queryKey: [path], queryFn: () => api<T>(path), refetchInterval: interval, refetchOnReconnect: true, refetchOnWindowFocus: true, enabled, retry: 1 }); }
 export function ErrorMessage({ error }: { error: Error | null }) {
   if (!error) return null;
   const status = error instanceof RequestError ? error.status : 0;

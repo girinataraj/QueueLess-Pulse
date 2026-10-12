@@ -1,8 +1,8 @@
 """Additive operational APIs. Every mutation uses existing service locks and RBAC."""
 from datetime import date, datetime, timezone
-import csv, io, uuid
+import csv, io, uuid, hashlib, hmac
 from zoneinfo import ZoneInfo
-from flask import Blueprint, abort, jsonify, request, session, Response
+from flask import Blueprint, abort, current_app, jsonify, request, Response
 from access import current_user, require_service, reception_service, owner_business
 from models import db, Staff, Service, Ticket, TicketEvent, Membership, ServiceAssignment, ReceptionGrant, DoctorDuty, OperationReceipt, AdminEvent, Branch
 from queue_core import lock_service, issue_ticket
@@ -16,7 +16,7 @@ def duty_data(service_id, staff_id):
 
 def active_duties(service):
     # Revoked/inactive accounts and assignments cannot advertise availability.
-    return DoctorDuty.query.join(Membership, (Membership.staff_id==DoctorDuty.staff_id) & (Membership.business_id==service.branch.business_id)).join(ServiceAssignment,ServiceAssignment.membership_id==Membership.id).join(Membership.staff).filter(DoctorDuty.service_id==service.id,ServiceAssignment.service_id==service.id,Membership.is_active.is_(True),Membership.staff.has(is_active=True),DoctorDuty.state!='OFF_DUTY').all()
+    return DoctorDuty.query.join(Membership, (Membership.staff_id==DoctorDuty.staff_id) & (Membership.business_id==service.branch.business_id)).join(ServiceAssignment,ServiceAssignment.membership_id==Membership.id).join(Staff,Staff.id==DoctorDuty.staff_id).filter(DoctorDuty.service_id==service.id,ServiceAssignment.service_id==service.id,Membership.role=='staff',Membership.is_active.is_(True),Staff.is_active.is_(True),DoctorDuty.state!='OFF_DUTY').all()
 
 def availability(service):
     if not service.is_active or not service.branch.is_active or not service.branch.business.is_active:return 'CLOSED'
@@ -112,12 +112,13 @@ def locate(service_id):
 def public_announcement(service):
     called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
     e=TicketEvent.query.filter(TicketEvent.ticket_id==called.id,TicketEvent.event_type.in_(('CALLED','RECALLED'))).order_by(TicketEvent.id.desc()).first() if called else None
-    return str(e.id) if e else ''
+    # Opaque announcement version; do not reveal globally sequential audit IDs.
+    return hmac.new(str(current_app.config['SECRET_KEY']).encode(),f'announcement:{service.id}:{e.id}'.encode(),hashlib.sha256).hexdigest()[:24] if e else ''
 
 @operations.get('/owner/businesses/<int:business_id>/operations')
 def owner_operations(business_id):
     b=owner_business(business_id);today,start,end=business_day(b)
-    tickets=Ticket.query.join(Service).join(Branch).filter(Branch.business_id==b.id).all()
+    tickets=Ticket.query.join(Service).join(Branch).filter(Branch.business_id==b.id,db.or_(db.and_(Ticket.created_at>=start,Ticket.created_at<end),db.and_(Ticket.called_at>=start,Ticket.called_at<end),db.and_(Ticket.finished_at>=start,Ticket.finished_at<end))).all()
     issued=[t for t in tickets if start<=aware(t.created_at)<end]
     completed=[t for t in tickets if t.status=='COMPLETED' and t.finished_at and start<=aware(t.finished_at)<end]
     called=[t for t in tickets if t.called_at and start<=aware(t.called_at)<end]

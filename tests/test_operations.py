@@ -168,3 +168,38 @@ def test_concurrent_call_and_break_have_serial_outcomes(pg_app):
     with pg_app.app_context():
         duty=DoctorDuty.query.one();t=Ticket.query.one()
         assert (duty.state,t.status) in [('ON_BREAK','WAITING'),('AVAILABLE','CALLED')]
+
+@pytest.mark.postgres
+def test_patient_and_walkin_share_one_concurrent_numbering_engine(pg_app):
+    users(pg_app)
+    with pg_app.app_context():
+        mid=Membership.query.join(Staff).filter(Staff.username=='tester').one().id
+        db.session.add(ReceptionGrant(membership_id=mid));db.session.commit()
+    calls=[lambda c:join(c),lambda c:op(c,'/reception/services/1/walkins')]*4
+    results=parallel(pg_app,calls,staff=True)
+    assert sorted(r.status_code for r in results)==[201]*4+[303]*4
+    with pg_app.app_context():
+        assert sorted(t.daily_number for t in Ticket.query)==list(range(1,9))
+        assert TicketEvent.query.filter_by(event_type='CREATED').count()==8
+        assert Ticket.query.filter_by(status='WAITING').count()==8
+
+def test_walkin_midnight_rollover_retains_unresolved_previous_day(application,monkeypatch):
+    import queue_core
+    from datetime import datetime
+    users(application);o=signin(application,'operations_owner');r=signin(application,'operations_reception');grant(o,application)
+    class Sunday(datetime):
+        @classmethod
+        def now(cls,tz=None):return datetime(2026,10,11,18,29,tzinfo=timezone.utc).astimezone(tz)
+    monkeypatch.setattr(queue_core,'datetime',Sunday)
+    first=op(r,'/reception/services/1/walkins').json
+    c=application.test_client();login(c);post(c,'/staff/call/1')
+    class Monday(datetime):
+        @classmethod
+        def now(cls,tz=None):return datetime(2026,10,11,18,31,tzinfo=timezone.utc).astimezone(tz)
+    monkeypatch.setattr(queue_core,'datetime',Monday)
+    second=op(r,'/reception/services/1/walkins').json
+    assert first['number']==second['number']=='G001'
+    assert first['business_date']=='2026-10-11' and second['business_date']=='2026-10-12'
+    with application.app_context():
+        assert Ticket.query.filter_by(status='CALLED').one().business_date.isoformat()=='2026-10-11'
+        assert Ticket.query.filter_by(status='WAITING').one().business_date.isoformat()=='2026-10-12'
