@@ -13,7 +13,7 @@ from models import db, RateLimitBucket
 
 AUTH_ENDPOINTS = frozenset(('staff_login', 'universal.owner_login', 'universal.register',
                           'universal.accept_invite', 'api.login', 'api.register', 'api.accept'))
-QUEUE_ENDPOINTS = frozenset(('join_queue', 'api.issue'))
+QUEUE_ENDPOINTS = frozenset(('join_queue', 'api.issue', 'operations.walkin'))
 
 def client_address():
     # Never trust client-supplied forwarding headers without an explicit proxy count.

@@ -139,3 +139,30 @@ class TicketEvent(db.Model):
 from sqlalchemy import DDL, event
 _assignment_guard = ( __import__('pathlib').Path(__file__).parent / 'migrations/003_assignment_guard.sql').read_text(encoding='utf-8')
 event.listen(ServiceAssignment.__table__, 'after_create', DDL(_assignment_guard).execute_if(dialect='postgresql'))
+
+
+class ReceptionGrant(db.Model):
+    """Explicit owner-managed capability; never implied by a staff membership."""
+    __tablename__ = 'reception_grants'
+    membership_id = db.Column(db.Integer, db.ForeignKey('memberships.id'), primary_key=True)
+
+class DoctorDuty(db.Model):
+    __tablename__ = 'doctor_duties'
+    __table_args__ = (db.UniqueConstraint('service_id','staff_id',name='uq_doctor_duty'), db.CheckConstraint("state IN ('AVAILABLE','ON_BREAK','OFF_DUTY')",name='ck_doctor_duty_state'))
+    id = db.Column(db.Integer, primary_key=True)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=False)
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff.id'), nullable=False)
+    state = db.Column(db.String(12), nullable=False)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False)
+
+class OperationReceipt(db.Model):
+    __tablename__ = 'operation_receipts'
+    __table_args__ = (db.UniqueConstraint('staff_id','request_key',name='uq_operation_request'),)
+    id = db.Column(db.Integer, primary_key=True)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), nullable=False)
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff.id'), nullable=False)
+    request_key = db.Column(db.String(36), nullable=False)
+    action = db.Column(db.String(32), nullable=False)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'))
+    timestamp = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)

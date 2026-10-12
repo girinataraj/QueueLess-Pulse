@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from flask import Blueprint, abort, current_app, jsonify, make_response, request, session
 from access import current_user, login_required, owner_business, owned_businesses, readable_services, reception_service
-from models import db, Business, Branch, Service, Membership, ServiceAssignment, Ticket, StaffInvite
+from models import db, Business, Branch, Service, Membership, ServiceAssignment, Ticket, StaffInvite, ReceptionGrant
 from universal import public_business, public_services, reception_services, display_rows, statistics, service_for, aware, make_invitation, history_filters, qr_response
 
 api = Blueprint('api', __name__, url_prefix='/api/v1')
@@ -27,8 +27,9 @@ def service_data(s):
     return {**{k: getattr(s, k) for k in ('id', 'branch_id', 'name', 'prefix', 'average_minutes', 'counter_label', 'is_active')}, 'description': s.description or ''}
 
 def ticket_data(t):
+    from operations import availability, public_announcement
     return {**current_app.extensions['queue_state'](t), 'token': t.token,
-            'business_date': str(t.business_date), 'can_cancel': t.owner_id == session.get('owner_id') and t.status == 'WAITING'}
+            'business_date': str(t.business_date), 'can_cancel': t.owner_id == session.get('owner_id') and t.status == 'WAITING', 'created_at':aware(t.created_at).isoformat(), 'called_at':aware(t.called_at).isoformat() if t.called_at else None, 'finished_at':aware(t.finished_at).isoformat() if t.finished_at else None, 'service_availability':availability(t.service), 'entry_path':f'/app/b/{t.service.branch.business.slug}/service/{t.service_id}', 'announcement_id':public_announcement(t.service)}
 
 def invoke(endpoint, **kwargs):
     """Reuse audited form validation, role checks, locks and transaction commits."""
@@ -97,9 +98,11 @@ def staff_queues():
 
 @api.get('/reception/queues')
 def reception_queues():
+    from operations import reception_details
     rows=display_rows(readable_services())
     base=(current_app.config.get('PUBLIC_BASE_URL') or request.url_root.rstrip('/')).rstrip('/')
     for row in rows:
+        row.update(reception_details(db.session.get(Service,row['service_id'])))
         row['patient_url']=f"{base}/app/b/{row['business_slug']}/service/{row['service_id']}"
     return jsonify(rows)
 
@@ -138,7 +141,7 @@ def owner_bundle(business_id):
     return jsonify(business=business_data(b), branches=[branch_data(v) for v in Branch.query.filter_by(business_id=b.id).order_by(Branch.id)],
                    services=[service_data(v) for v in Service.query.join(Branch).filter(Branch.business_id == b.id).order_by(Service.id)],
                    members=[{'id': m.id, 'username': m.staff.username, 'role': m.role, 'is_active': m.is_active,
-                             'service_ids': [a.service_id for a in ServiceAssignment.query.filter_by(membership_id=m.id)]} for m in members], stats=statistics(b.id))
+                             'can_issue_walkins':bool(db.session.get(ReceptionGrant,m.id)), 'service_ids': [a.service_id for a in ServiceAssignment.query.filter_by(membership_id=m.id)]} for m in members], stats=statistics(b.id))
 
 @api.get('/owner/businesses/<int:business_id>/stats')
 def stats(business_id):

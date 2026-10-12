@@ -96,12 +96,13 @@ def reception_services(business,branch_id=None):
     return query.filter(db.or_(db.and_(Service.is_active.is_(True),Branch.is_active.is_(True)),outstanding)).order_by(Service.id).all()
 
 def display_rows(services):
+    from operations import public_announcement, availability
     rows=[]
     for service in services:
         called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
         today,start,end=business_day(service.branch.business)
         terminal=Ticket.query.filter(Ticket.service_id==service.id,Ticket.finished_at>=start,Ticket.finished_at<end)
-        rows.append({'service_id':service.id,'service_name':service.name,'branch_name':service.branch.name,'business_name':service.branch.business.name,'business_slug':service.branch.business.slug,'counter_label':service.counter_label,'currently_called':called.display_number if called else '---','waiting_count':Ticket.query.filter_by(service_id=service.id,status='WAITING').count(),'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today)})
+        rows.append({'service_id':service.id,'service_name':service.name,'branch_name':service.branch.name,'business_name':service.branch.business.name,'business_slug':service.branch.business.slug,'counter_label':service.counter_label,'currently_called':called.display_number if called else '---','waiting_count':Ticket.query.filter_by(service_id=service.id,status='WAITING').count(),'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today),'announcement_id':public_announcement(service),'availability':availability(service)})
     return rows
 
 @universal.route('/owner/register',methods=['GET','POST'])
@@ -257,6 +258,11 @@ def permissions(business_id,membership_id):
     if not selected <= {s.id for s in services}:
         abort(404,'Service is outside this business.')
     membership.is_active=request.form.get('is_active')=='on'
+    if request.form.get('walkin_permission_set')=='on':
+        from models import ReceptionGrant
+        grant=db.session.get(ReceptionGrant,membership.id)
+        if request.form.get('can_issue_walkins')=='on' and not grant:db.session.add(ReceptionGrant(membership_id=membership.id))
+        elif request.form.get('can_issue_walkins')!='on' and grant:db.session.delete(grant)
     ServiceAssignment.query.filter_by(membership_id=membership.id).delete()
     db.session.add_all([ServiceAssignment(membership_id=membership.id,service_id=sid) for sid in selected])
     audit(business_id,'STAFF_PERMISSIONS_UPDATED',str(membership.id))

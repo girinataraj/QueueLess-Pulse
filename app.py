@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from config import Config
 from models import db, Staff, Service, Ticket, TicketEvent, Business, Branch, Membership, ServiceAssignment
 from access import current_user, allowed_services, require_service
+from queue_core import lock_service, issue_ticket
 from universal import universal, display_rows, public_services, reception_services, business_day
 
 
@@ -41,6 +42,8 @@ def create_app(test_config=None):
     app.register_blueprint(universal)
     from api import api
     app.register_blueprint(api)
+    from operations import operations
+    app.register_blueprint(operations)
     from demo_access import configure as configure_demo_access
     configure_demo_access(app)
     from rate_limit import configure as configure_rate_limits
@@ -126,11 +129,7 @@ def create_app(test_config=None):
             return fn(*args, **kwargs)
         return wrapped
 
-    def locked_service(service_id):
-        service = db.session.scalar(select(Service).where(Service.id == service_id).with_for_update().execution_options(populate_existing=True))
-        if service is None:
-            abort(404)
-        return service
+    locked_service = lock_service
 
     def event(ticket, action, staff_id=None):
         db.session.add(TicketEvent(ticket_id=ticket.id, event_type=action, staff_id=staff_id))
@@ -210,13 +209,14 @@ def create_app(test_config=None):
         old_numbering='business_date' not in {c['name'] for c in inspector.get_columns('tickets')}
         old_tenants='branch_id' not in {c['name'] for c in inspector.get_columns('services')}
         old_limits=not inspector.has_table('rate_limit_buckets')
-        if not old_numbering and not old_tenants and not old_limits:
+        old_operations=any(not inspector.has_table(name) for name in ('doctor_duties','reception_grants','operation_receipts'))
+        if not old_numbering and not old_tenants and not old_limits and not old_operations:
             click.echo('Schema already current.')
             return
         try:
             with db.engine.begin() as connection:
                 connection.execute(text("SELECT set_config('app.business_timezone', :tz, true)"), {'tz': app.config['BUSINESS_TIMEZONE']})
-                for needed,filename in [(old_numbering,'001_queue_integrity.sql'),(old_tenants,'002_universal.sql'),(old_tenants,'003_assignment_guard.sql'),(old_limits,'004_rate_limits.sql')]:
+                for needed,filename in [(old_numbering,'001_queue_integrity.sql'),(old_tenants,'002_universal.sql'),(old_tenants,'003_assignment_guard.sql'),(old_limits,'004_rate_limits.sql'),(old_operations,'005_operational_workflows.sql')]:
                     if needed:
                         connection.execute(text((Path(app.root_path)/'migrations'/filename).read_text(encoding='utf-8')))
         except SQLAlchemyError as error:
@@ -269,6 +269,10 @@ def create_app(test_config=None):
         db.session.execute(select(Ticket.business_date, Ticket.request_key).limit(0))
         from models import RateLimitBucket
         db.session.execute(select(RateLimitBucket.hits).limit(0))
+        from models import DoctorDuty, ReceptionGrant, OperationReceipt
+        db.session.execute(select(DoctorDuty.state).limit(0))
+        db.session.execute(select(ReceptionGrant.membership_id).limit(0))
+        db.session.execute(select(OperationReceipt.request_key).limit(0))
         return jsonify(status='ok')
 
     @app.get('/sw.js')
@@ -292,30 +296,7 @@ def create_app(test_config=None):
 
     @app.post('/service/<int:service_id>/join')
     def join_queue(service_id):
-        key = request.form.get('request_key', '')
-        try:
-            key = str(uuid.UUID(key))
-        except (ValueError, TypeError):
-            abort(400, 'Invalid submission key')
-        service = locked_service(service_id)
-        db.session.refresh(service.branch)
-        db.session.refresh(service.branch.business)
-        if not service.is_active or not service.branch.is_active or not service.branch.business.is_active:
-            abort(409, 'Service unavailable')
-        existing = Ticket.query.filter_by(request_key=key).first()
-        if existing:
-            if existing.owner_id != session.get('owner_id') or existing.service_id != service_id:
-                abort(409, 'Submission key already used')
-            return redirect(url_for('view_ticket', token=existing.token), code=303)
-        day = datetime.now(ZoneInfo(service.branch.business.timezone)).date()
-        if service.seq_date != day:
-            service.seq_date, service.last_number = day, 0
-        service.last_number += 1
-        ticket = Ticket(service_id=service.id, business_date=day, daily_number=service.last_number,
-                        display_number=f'{service.prefix}{service.last_number:03d}', request_key=key, owner_id=session['owner_id'])
-        db.session.add(ticket)
-        db.session.flush()
-        event(ticket, 'CREATED')
+        ticket, _ = issue_ticket(service_id, request.form.get('request_key', ''), session['owner_id'], clock=datetime)
         db.session.commit()
         return redirect(url_for('view_ticket', token=ticket.token), code=303)
 
@@ -330,7 +311,7 @@ def create_app(test_config=None):
 
     @app.get('/my-tickets')
     def my_tickets():
-        tickets = Ticket.query.filter_by(owner_id=session['owner_id']).order_by(Ticket.id.desc()).limit(30).all() if session.get('owner_id') else []
+        tickets = Ticket.query.filter_by(owner_id=session['owner_id'], clock=datetime).order_by(Ticket.id.desc()).limit(30).all() if session.get('owner_id') else []
         return render_template('customer/my_tickets.html', tickets=tickets)
 
     @app.post('/ticket/<token>/cancel')
@@ -380,6 +361,10 @@ def create_app(test_config=None):
     def staff_call(service_id):
         service = locked_service(service_id)
         require_service(service)
+        from models import DoctorDuty
+        duty=DoctorDuty.query.filter_by(service_id=service_id,staff_id=current_user().id).first()
+        if duty and duty.state != 'AVAILABLE':
+            abort(409, 'Start or resume duty before Call Next.')
         if Ticket.query.filter_by(service_id=service_id, status='CALLED').first():
             abort(409, 'Complete or skip the active ticket first')
         ticket = Ticket.query.filter_by(service_id=service_id, status='WAITING').order_by(Ticket.id).first()
@@ -425,13 +410,14 @@ def create_app(test_config=None):
     @app.get('/staff/live')
     @staff_required
     def staff_live():
+        from operations import doctor_details
         rows=[]
         for service in allowed_services():
             waiting=Ticket.query.filter_by(service_id=service.id,status='WAITING').order_by(Ticket.id).all()
             called=Ticket.query.filter_by(service_id=service.id,status='CALLED').first()
             today,start,end=business_day(service.branch.business)
             terminal=Ticket.query.filter(Ticket.service_id==service.id,Ticket.finished_at>=start,Ticket.finished_at<end)
-            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number,'business_date':str(t.business_date)} for t in waiting], 'called':{'id':called.id,'number':called.display_number,'business_date':str(called.business_date)} if called else None, 'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today)})
+            rows.append({'id':service.id,'name':service.name,'branch':service.branch.name,'business':service.branch.business.name,'counter':service.counter_label,'active':service.is_active,'waiting':[{'id':t.id,'number':t.display_number,'business_date':str(t.business_date)} for t in waiting], 'called':{'id':called.id,'number':called.display_number,'business_date':str(called.business_date)} if called else None, 'completed_today':terminal.filter_by(status='COMPLETED').count(),'skipped_today':terminal.filter_by(status='SKIPPED').count(),'business_date':str(today), **doctor_details(service)})
         return jsonify(rows)
 
     @app.get('/display')

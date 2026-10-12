@@ -266,6 +266,38 @@
         },
         "can_cancel": {
           "type": "boolean"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "called_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "service_availability": {
+          "type": "string"
+        },
+        "entry_path": {
+          "type": "string"
+        },
+        "announcement_id": {
+          "type": "string"
         }
       },
       "required": [
@@ -280,7 +312,13 @@
         "business_name",
         "counter_label",
         "business_date",
-        "can_cancel"
+        "can_cancel",
+        "created_at",
+        "called_at",
+        "finished_at",
+        "service_availability",
+        "entry_path",
+        "announcement_id"
       ],
       "additionalProperties": false
     },
@@ -357,6 +395,38 @@
         "business_date": {
           "type": "string",
           "format": "date"
+        },
+        "duty": {
+          "$ref": "#/$defs/Duty"
+        },
+        "called_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "average_duration_today": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_samples_today": {
+          "type": "integer"
+        },
+        "activity": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Activity"
+          }
         }
       },
       "required": [
@@ -370,7 +440,12 @@
         "called",
         "completed_today",
         "skipped_today",
-        "business_date"
+        "business_date",
+        "duty",
+        "called_at",
+        "average_duration_today",
+        "duration_samples_today",
+        "activity"
       ],
       "additionalProperties": false
     },
@@ -494,6 +569,9 @@
           "items": {
             "type": "integer"
           }
+        },
+        "can_issue_walkins": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -501,7 +579,8 @@
         "username",
         "role",
         "is_active",
-        "service_ids"
+        "service_ids",
+        "can_issue_walkins"
       ],
       "additionalProperties": false
     },
@@ -663,6 +742,12 @@
           "business_date": {
             "type": "string",
             "format": "date"
+          },
+          "announcement_id": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string"
           }
         },
         "required": [
@@ -676,7 +761,9 @@
           "business_slug",
           "completed_today",
           "skipped_today",
-          "business_date"
+          "business_date",
+          "announcement_id",
+          "availability"
         ],
         "additionalProperties": false
       }
@@ -787,6 +874,63 @@
           },
           "patient_url": {
             "type": "string"
+          },
+          "announcement_id": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string"
+          },
+          "waiting": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "string"
+                },
+                "business_date": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "number",
+                "business_date"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "estimated_wait": {
+            "type": "integer"
+          },
+          "average_minutes": {
+            "type": "integer"
+          },
+          "can_issue_walkins": {
+            "type": "boolean"
+          },
+          "activity": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "details": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "details",
+                "at"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -801,10 +945,286 @@
           "completed_today",
           "skipped_today",
           "business_date",
-          "patient_url"
+          "patient_url",
+          "announcement_id",
+          "availability",
+          "waiting",
+          "estimated_wait",
+          "average_minutes",
+          "can_issue_walkins",
+          "activity"
         ],
         "additionalProperties": false
       }
+    },
+    "Duty": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "NOT_STARTED",
+            "AVAILABLE",
+            "ON_BREAK",
+            "OFF_DUTY"
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "started_at",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    },
+    "Activity": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "action",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "Walkin": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string"
+        },
+        "business_date": {
+          "type": "string"
+        },
+        "service_name": {
+          "type": "string"
+        },
+        "created": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "number",
+        "business_date",
+        "service_name",
+        "created"
+      ],
+      "additionalProperties": false
+    },
+    "LocatedToken": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string"
+        },
+        "business_date": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        }
+      },
+      "required": [
+        "number",
+        "business_date",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "OperationsMetrics": {
+      "type": "object",
+      "properties": {
+        "business_date": {
+          "type": "string"
+        },
+        "issued_today": {
+          "type": "integer"
+        },
+        "average_wait_today": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wait_samples": {
+          "type": "integer"
+        },
+        "average_duration_today": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_samples": {
+          "type": "integer"
+        },
+        "hourly": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hour": {
+                "type": "string"
+              },
+              "arrivals": {
+                "type": "integer"
+              },
+              "completed": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "hour",
+              "arrivals",
+              "completed"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "availability": {
+                "type": "string"
+              },
+              "completed_today": {
+                "type": "integer"
+              },
+              "duties": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "username": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "username",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "availability",
+              "completed_today",
+              "duties"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "workload": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "reviewed": {
+                "type": "integer"
+              },
+              "skipped": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "username",
+              "reviewed",
+              "skipped"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "activity": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "details": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "action",
+              "details",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "business_date",
+        "issued_today",
+        "average_wait_today",
+        "wait_samples",
+        "average_duration_today",
+        "duration_samples",
+        "hourly",
+        "services",
+        "workload",
+        "activity"
+      ],
+      "additionalProperties": false
     }
   }
 }
