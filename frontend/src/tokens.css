@@ -1,0 +1,21 @@
+/* QueueLess Pulse Design System. Component styles consume these tokens. */
+:root {
+  --color-navy: #112b43; --color-teal: #007f86; --color-bg: #f2f7f9; --color-surface: #fff;
+  --color-text: #183448; --color-muted: #526678; --color-border: #d4e1e7;
+  --color-success: #206b55; --color-success-bg: #e7f4ed;
+  --color-warning: #80500c; --color-warning-bg: #fff2d9;
+  --color-danger: #ad3434; --color-danger-bg: #fff0f0;
+  --color-info: #006873; --color-info-bg: #e2f4f5;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --text-xs: .75rem; --text-sm: .875rem; --text-base: 1rem; --text-lg: 1.125rem;
+  --text-xl: 1.375rem; --text-2xl: 1.75rem; --text-3xl: 2.125rem;
+  --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+  --radius-sm: .375rem; --radius-md: .625rem; --radius-lg: .875rem; --radius-pill: 999px;
+  --shadow-card: 0 2px 8px #112b4305; --shadow-dialog: 0 24px 70px #112b432e;
+  --width-content: 1520px; --width-sidebar: 232px; --width-patient: 720px;
+  --motion-fast: 140ms; --motion-normal: 240ms; --focus-ring: 3px solid #007f86;
+  --icon-sm: 18px; --icon-base: 20px; --icon-lg: 24px; --control-size: 44px;
+  --z-overlay: 30; --z-dialog: 31; --z-toast: 40;
+  --primary: var(--color-navy); --accent: var(--color-teal); --muted: var(--color-muted); --border: var(--color-border);
+}
