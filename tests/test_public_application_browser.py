@@ -28,14 +28,14 @@ def test_fresh_patient_display_reception_doctor_owner_without_basic(browser_appl
                 s=p.request.get(origin+'/api/v1/session');assert s.json()['user'] is None and not s.json()['gateway_required']
                 denied=p.request.get(origin+'/api/v1/owner/businesses');assert denied.status==401 and 'www-authenticate' not in denied.headers
             patient.goto(origin+'/app/b/demo/service/1');patient.get_by_role('button',name='Join Queue',exact=True).click()
-            expect(patient.get_by_role('heading',name='Your ticket')).to_be_visible();expect(patient.locator('.token-display')).to_have_text('G001')
+            expect(patient.get_by_role('heading',name='General',exact=True)).to_be_visible();expect(patient.locator('.token-display')).to_have_text('G001')
             private_token=patient.url.rsplit('/',1)[-1]
             display.goto(origin+'/app/b/demo/display');expect(display.get_by_role('heading',name='Now serving')).to_be_visible()
             assert private_token not in display.content()
             def login(p,path,username,password):
                 p.goto(origin+path);p.get_by_label('Username',exact=False).fill(username);p.get_by_label('Password',exact=False).fill(password)
                 p.get_by_role('button',name='Sign in',exact=True).click()
-                target='/app/owner' if username=='browser_owner' else '/app/staff/reception' if username=='browser_reception' else '/app/staff/dashboard'
+                target='/app/owner/business/1' if username=='browser_owner' else '/app/staff/reception' if username=='browser_reception' else '/app/staff/dashboard'
                 p.wait_for_url(origin+target)
             login(reception,'/app/staff/login?experience=reception','browser_reception','test-only-browser-password')
             expect(reception.get_by_role('heading',name='Reception desk')).to_be_visible();expect(reception.get_by_alt_text('General service QR')).to_be_visible()

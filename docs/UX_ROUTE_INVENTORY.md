@@ -1,10 +1,10 @@
 # Route reconstruction: 691f2cf baseline
 
-This audit covers every React route in app.tsx, the shared sidebar, public links and the five operational journeys. Implementation stays on codex/hospital-design-workflows. The preserved baseline is 691f2cfba8a4391159bc220439a85601965e89e2. No database or API changes are planned.
+This audit covers every React route in app.tsx, public links and the five operational journeys after reconstruction. Implementation stays on codex/hospital-design-workflows. The preserved baseline is 691f2cfba8a4391159bc220439a85601965e89e2. This change has no database, API or migration changes.
 
 ## Counting rule
 
-Count a user-facing screen as a non-error route pattern that renders a page, including legitimate conditional selection or registration flows. Do not count modals, drawers, tabs, transient loading/error states or the catch-all. Before: 18 rendering route patterns. Target after: 13 rendering patterns plus five compatibility-only redirects. All 18 old URLs remain supported. Single-business/service selection routes resolve automatically with replace-navigation; multi-business/service selection remains meaningful and supported.
+Count a user-facing screen as a non-error route pattern that renders a page, including legitimate conditional selection or registration flows. Do not count modals, drawers, tabs, transient loading/error states or the catch-all. Before: 18 rendering route patterns. Implemented after: 13 rendering patterns plus five compatibility-only redirects. All 18 old URLs remain supported. Single-business/service selection routes resolve automatically with replace-navigation; multi-business/service selection remains meaningful and supported. The one-hospital demonstration has five principal role experiences, not 13 mandatory steps.
 
 ## Complete route inventory
 
@@ -23,7 +23,7 @@ Count a user-facing screen as a non-error route pattern that renders a page, inc
 | /staff/dashboard | Doctor service operations | KEEP | Focused consultation/duty console, no public/Owner navigation. |
 | /staff/reception | Reception desk | KEEP | Queue/arrival actions and QR in context; no Owner/Doctor navigation. |
 | /owner | Owner portfolio/create business | KEEP / conditional | One owned business opens directly. Explicit portfolio mode preserves creation and multi-business administration. |
-| /owner/business/:businessId | Owner operations/admin | KEEP / consolidate | Accessible tabs include reviews/history; no duplicate standalone dashboards. |
+| /owner/business/:businessId | Owner operations/admin | KEEP / consolidate | Four sections: Overview, Team & Services, Reviews and Settings; no duplicate standalone dashboards. Old services/team/branches/profile section links select the corresponding grouped controls. |
 | /owner/business/:businessId/reviews | Owner completed today | REDIRECT / MERGE | Same Owner workspace, section=reviews&review=today; business-local completion filter forced. |
 | /owner/business/:businessId/history | Owner filtered audit history | REDIRECT / MERGE | Same workspace, section=reviews&review=history; date/service/status/page preserved. |
 | /display | Display business chooser | REDIRECT / MERGE | /?view=display; one business opens kiosk, meaningful chooser only for multiple. |
@@ -49,6 +49,6 @@ Preserve every backend operation: walk-in grant, shared issuance, QR download/pr
 | Owner operations | Review/manage actual hospital | Business-local KPIs, services, permissions, audit | Tabs/forms and unified paginated history; actual data |
 | Display | Announce serving token | Large number, service/counter, wait and connection | Full-height kiosk; anonymous public-only payload |
 
-## Verification plan
+## Verification coverage
 
-Meaningful navigation tests cover five redirects, query/scope preservation, direct QR, default single-service landing, Back and mobile recovery/navigation, role separation and protected APIs. Preserve existing lifecycle, duty, walk-in, Owner form and printing assertions. Capture actual functional states at 1440/1366/768/390/360 px in a separate BEFORE/AFTER review pack. Run the complete 180 Python + 26 frontend baseline and update totals only for added meaningful coverage. Native source/signing remain unchanged; reuse the unchanged APK/native evidence and clearly report its hosted-frontend boundary.
+Meaningful navigation tests cover five redirects, query/scope preservation, direct QR, default single-service landing, Back and mobile recovery/navigation, role separation and protected APIs. Owner-section tests cover four tabs, keyboard navigation, preserved unsaved fields and old section links at desktop/mobile widths. Delayed-commit/lost-response tests verify unresolved issuance keys survive reload, retries resolve the original ticket, creation-event counts stay correct and subsequent visits work. Existing lifecycle, duty, walk-in, Owner form and printing assertions are retained. The final Python suite contains the complete 180-test baseline plus six added browser cases; frontend contains the complete 26-test baseline plus four navigation cases. Actual functional states are captured at 1440/1366/768/390/360 px in private BEFORE/AFTER review packs. Native source/signing remain unchanged; report fresh native/tooling checks separately from earlier emulator evidence and its hosted-frontend boundary. Exact execution results belong in the final verification report, not an assumed pass in this inventory.

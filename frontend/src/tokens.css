@@ -1,6 +1,6 @@
 /* QueueLess Pulse Design System. Component styles consume these tokens. */
 :root {
-  --color-navy: #112b43; --color-teal: #007f86; --color-bg: #f2f7f9; --color-surface: #fff;
+  --color-navy: #0e2d43; --color-teal: #007f86; --color-bg: #f3f9f9; --color-surface: #fff;
   --color-text: #183448; --color-muted: #526678; --color-border: #d4e1e7;
   --color-success: #206b55; --color-success-bg: #e7f4ed;
   --color-warning: #80500c; --color-warning-bg: #fff2d9;
@@ -13,7 +13,8 @@
   --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
   --radius-sm: .375rem; --radius-md: .625rem; --radius-lg: .875rem; --radius-pill: 999px;
   --shadow-card: 0 2px 8px #112b4305; --shadow-dialog: 0 24px 70px #112b432e;
-  --width-content: 1520px; --width-sidebar: 232px; --width-patient: 720px;
+  --width-content: 1520px; --width-patient: 1168px;
+  --mint: #c9f1e6; --art-white: #fbfefe; --art-teal: #57b7ad; --art-background: #ddf3f1; --foreground: var(--color-navy);
   --motion-fast: 140ms; --motion-normal: 240ms; --focus-ring: 3px solid #007f86;
   --icon-sm: 18px; --icon-base: 20px; --icon-lg: 24px; --control-size: 44px;
   --z-overlay: 30; --z-dialog: 31; --z-toast: 40;

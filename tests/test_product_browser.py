@@ -1,7 +1,7 @@
 """Integrated role acceptance uses disposable PostgreSQL, never the live service."""
 from pathlib import Path
 from threading import Thread
-import io
+import io, os
 import pytest
 import zxingcpp
 from PIL import Image
@@ -29,14 +29,28 @@ def sign_in(page,origin,username,password,role):
     page.goto(origin+('/app/owner/login' if role=='owner' else '/app/staff/login'+('?experience=reception' if role=='reception' else '')))
     page.get_by_label('Username',exact=False).fill(username);page.get_by_label('Password',exact=False).fill(password)
     page.get_by_role('button',name='Sign in',exact=True).click()
-    page.wait_for_url('**/app/'+('owner' if role=='owner' else 'staff/reception' if role=='reception' else 'staff/dashboard'))
+    page.wait_for_url('**/app/'+('owner/business/*' if role=='owner' else 'staff/reception' if role=='reception' else 'staff/dashboard'))
 
 def accessible(page):
+    expect(page.locator('.skeleton:visible')).to_have_count(0)
     axe=next((ROOT/'frontend/node_modules/.pnpm').glob('axe-core@*/node_modules/axe-core/axe.min.js'))
     page.add_script_tag(path=str(axe))
     result=page.evaluate("async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']}})).violations")
     assert not result,[(v['id'],[n['target'] for n in v['nodes']]) for v in result]
     assert not page.evaluate('document.documentElement.scrollWidth>innerWidth')
+
+
+def owner_section(page,section):
+    page.get_by_role('tab',name='Team & Services',exact=True).click()
+    group=page.locator('#'+{'Services':'services','Team':'team','Branches':'branches'}[section])
+    if group.get_attribute('open') is None:group.locator('summary').first.click()
+
+
+def capture_state(page,name,width):
+    folder=Path(os.environ.get('UX_SCREENSHOT_DIR',str(ROOT/'evidence/ux-after')));folder.mkdir(parents=True,exist_ok=True)
+    expect(page.locator('h1').first).to_be_visible()
+    expect(page.locator('.skeleton:visible')).to_have_count(0)
+    page.screenshot(path=str(folder/f'{name}-{width}.png'),full_page=True)
 
 @pytest.mark.parametrize('width',[1440,1366,768,390,360])
 def test_reception_patient_doctor_recall_break_reviews_display(product_server,width):
@@ -46,7 +60,7 @@ def test_reception_patient_doctor_recall_break_reviews_display(product_server,wi
         reception,patient,doctor,owner,display=[ctx.new_page() for ctx in contexts]
         sign_in(reception,origin,'operations_reception','isolated-test-password-123','reception')
         card=reception.locator('.reception-card').filter(has=reception.get_by_role('heading',name='Eye Consultation',exact=True))
-        qr=card.get_by_alt_text('Eye Consultation service QR');expect(qr).to_be_visible();accessible(reception)
+        qr=card.get_by_alt_text('Eye Consultation service QR');expect(qr).to_be_visible();accessible(reception);capture_state(reception,'reception-desk',width)
         response=contexts[0].request.get(origin+qr.get_attribute('src'));entry=zxingcpp.read_barcode(Image.open(io.BytesIO(response.body()))).text
         assert entry==origin+'/app/b/erode-eye-clinic-demo/service/1'
         downloaded=contexts[0].request.get(origin+qr.get_attribute('src')+'?download=1')
@@ -60,27 +74,33 @@ def test_reception_patient_doctor_recall_break_reviews_display(product_server,wi
         expect(card.locator('.token-slip')).to_be_visible();expect(qr).not_to_be_visible()
         assert reception.evaluate('window.__printed===true')
         reception.evaluate("window.dispatchEvent(new Event('afterprint'))");reception.emulate_media(media='screen')
-        patient.goto(entry);patient.get_by_role('button',name='Join Queue').click();expect(patient.locator('.token-display')).to_have_text('E002');expect(patient.get_by_text('WAITING',exact=True)).to_be_visible();accessible(patient)
+        patient.goto(entry);expect(patient.get_by_role('button',name='Join Queue')).to_be_enabled();capture_state(patient,'patient-entry',width)
+        held=[];patient.route('**/api/v1/services/1/tickets',lambda route:held.append(route));patient.get_by_role('button',name='Join Queue').click();expect(patient.get_by_role('button',name='Joining…')).to_be_visible();capture_state(patient,'patient-joining',width);assert len(held)==1;held[0].continue_();patient.unroute('**/api/v1/services/1/tickets');expect(patient.locator('.token-display')).to_have_text('E002');expect(patient.get_by_text('WAITING',exact=True)).to_be_visible();accessible(patient)
+        capture_state(patient,'patient-waiting',width)
         private=patient.url;patient.reload();expect(patient.locator('.token-display')).to_have_text('E002')
         display.goto(origin+'/app/b/erode-eye-clinic-demo/display');expect(display.get_by_role('heading',name='Now serving',exact=True)).to_be_visible()
         sign_in(doctor,origin,'tester','test-password-123','doctor');queue=doctor.locator('.queue-card').filter(has=doctor.get_by_role('heading',name='Eye Consultation',exact=True))
         queue.get_by_role('button',name='Start duty').click();expect(queue.get_by_text('AVAILABLE',exact=True)).to_be_visible()
         queue.get_by_role('button',name='Call Next').click();expect(queue.locator('.token-display')).to_have_text('E001');expect(display.locator('.display-card').first.locator('.display-token')).to_have_text('E001',timeout=12000)
         assert queue.get_by_role('button',name='Start break').is_disabled();assert queue.get_by_role('button',name='End duty').is_disabled()
+        capture_state(doctor,'doctor-active',width);capture_state(display,'display-serving',width)
         queue.get_by_role('button',name='Recall token').click();expect(queue.get_by_text('RECALLED',exact=True)).to_be_visible();accessible(doctor)
         queue.get_by_role('button',name='Skip',exact=True).click();doctor.get_by_role('button',name='Confirm skip').click();expect(queue.locator('.token-display')).to_have_text('—')
         queue.get_by_role('button',name='Start break').click();doctor.get_by_role('button',name='Confirm break').click();expect(queue.get_by_text('ON BREAK',exact=True)).to_be_visible()
         expect(patient.get_by_text('Doctor on break. Your place is retained; the wait may be longer.')).to_be_visible(timeout=12000)
+        capture_state(doctor,'doctor-break',width)
         assert queue.get_by_role('button',name='Call Next').is_disabled()
         queue.get_by_role('button',name='Resume duty').click();expect(queue.get_by_text('AVAILABLE',exact=True)).to_be_visible();queue.get_by_role('button',name='Call Next').click();expect(patient.get_by_text('CALLED',exact=True)).to_be_visible(timeout=12000)
+        capture_state(patient,'patient-called',width)
         queue.get_by_role('button',name='Mark Reviewed').click();expect(patient.get_by_text('COMPLETED',exact=True)).to_be_visible(timeout=12000)
+        capture_state(patient,'patient-completed',width)
         expect(display.locator('.display-card').first.locator('.display-token')).to_have_text('---',timeout=12000);accessible(display)
-        sign_in(owner,origin,'operations_owner','isolated-test-password-123','owner');owner.goto(origin+'/app/owner/business/1');accessible(owner);owner.get_by_role('tab',name="Today's Reviews",exact=True).click();expect(owner.locator('#reviews').get_by_role('cell',name='E002',exact=True)).to_be_visible();accessible(owner)
+        sign_in(owner,origin,'operations_owner','isolated-test-password-123','owner');owner.goto(origin+'/app/owner/business/1');accessible(owner);capture_state(owner,'owner-overview',width);owner_section(owner,'Services');capture_state(owner,'owner-services',width);owner_section(owner,'Team');capture_state(owner,'owner-team',width);owner.get_by_role('tab',name='Reviews',exact=True).click();expect(owner.locator('#reviews').get_by_role('cell',name='E002',exact=True)).to_be_visible();accessible(owner)
         owner.get_by_role('tab',name='Overview',exact=True).click()
         owner.get_by_role('link',name="Today's Reviews →").click()
         expect(owner.get_by_role('heading',name="Today's Reviews",exact=True)).to_be_visible()
         expect(owner.get_by_role('cell',name='E002',exact=True)).to_be_visible()
-        expect(owner.get_by_role('cell',name='E001',exact=True)).not_to_be_visible();accessible(owner)
+        expect(owner.get_by_role('cell',name='E001',exact=True)).not_to_be_visible();accessible(owner);capture_state(owner,'owner-reviews',width)
         owner.goto(origin+'/app/owner/business/1/reviews?date=2020-01-01&status=SKIPPED')
         expect(owner.get_by_role('cell',name='E002',exact=True)).to_be_visible()
         expect(owner.get_by_role('cell',name='E001',exact=True)).not_to_be_visible()
