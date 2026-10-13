@@ -3,6 +3,7 @@ import hashlib
 import io
 import os
 import platform
+import re
 import subprocess
 import tarfile
 import tempfile
@@ -18,6 +19,9 @@ ASSETS={
 
 def git(*args):
     return subprocess.check_output(['git',*args])
+
+def empty_history_scan(output):
+    return re.search(r'\b0 commits scanned\b', output) is not None
 
 def main():
     root=Path(__file__).resolve().parents[1]
@@ -59,7 +63,7 @@ def main():
             result=subprocess.run([str(binary),command,str(source),'--redact=100','--no-banner','--report-format','json','--report-path',str(evidence/report),*extra],capture_output=True,text=True)
             output=result.stdout+result.stderr
             print(output)
-            if result.returncode or ' ERR ' in output or (command=='git' and '0 commits scanned' in output):
+            if result.returncode or ' ERR ' in output or (command=='git' and empty_history_scan(output)):
                 raise SystemExit('Secret scan failed; incomplete/error results cannot pass')
         (evidence/'secret-history-scope.json').write_text(str({'repository_commits_verified':len(set(commits)),'refs':'all branches, remotes, tags; temporary app checkpoints excluded','no_rules_disabled':True}))
     print('PASS: tracked release paths, Gitleaks index and all branch/remote/tag history. No scanner rules disabled.')
