@@ -23,6 +23,24 @@ final class BackendPolicy {
         URI uri = parse(url);
         return uri != null && secure(uri) && hostname.equals(uri.getHost());
     }
+    /** Only canonical application paths may enter the WebView through an intent or redirect. */
+    String launchEntry(String url) {
+        if (!allows(url)) return null;
+        URI uri = parse(url);
+        String path = uri.getRawPath();
+        if (path == null || !(path.equals("/app") || path.startsWith("/app/"))) return null;
+        // Current app routes use plain path segments. Reject encoded separators,
+        // double decoding and traversal instead of relying on browser normalization.
+        if (path.contains("%") || path.contains("//")) return null;
+        for (String segment : path.split("/")) {
+            if (segment.equals(".") || segment.equals("..")) return null;
+        }
+        return url;
+    }
+    boolean allowsWebViewNavigation(String url) {
+        // Existing authenticated QR downloads are not launch-intent destinations.
+        return launchEntry(url) != null || allowsQrDownload(url);
+    }
     String patientEntry() { return "https://"+hostname+"/app/b/erode-eye-clinic-demo/service/1"; }
     boolean allowsQrDownload(String url) {
         URI uri = parse(url);

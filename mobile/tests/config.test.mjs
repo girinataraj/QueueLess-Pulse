@@ -33,5 +33,5 @@ test('connected Android uses sessions and never collects or forwards Basic crede
   assert.doesNotMatch(native,/handler\.proceed|invitationUser|invitationPassword|AlertDialog|setRequestProperty\("Authorization"/);
   assert.match(native,/handler\.cancel\(\);/);
   assert.match(native,/CookieManager\.getInstance\(\)\.getCookie/);
-  assert.match(native,/view\.loadUrl\(policy\.patientEntry\(\)\)/);
+  assert.match(native,/view\.loadUrl\(entry != null \? entry : policy\.patientEntry\(\)\)/);
 });

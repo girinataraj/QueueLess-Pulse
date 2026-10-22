@@ -25,6 +25,8 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends BridgeActivity {
     private byte[] pendingQr;
+    private BackendPolicy launchPolicy;
+    private WebView appView;
     private final ExecutorService downloads = Executors.newSingleThreadExecutor();
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -62,14 +64,15 @@ public class MainActivity extends BridgeActivity {
                     printer.print("QueueLess Pulse QR", webView.createPrintDocumentAdapter("QueueLess Pulse QR"), null);
                     return true;
                 }
-                return !policy.allows(request.getUrl().toString());
+                String url = request.getUrl().toString();
+                return request.isForMainFrame() ? !policy.allowsWebViewNavigation(url) : !policy.allows(url);
             }
             @Override public void onPageFinished(WebView webView, String url) {
-                if (policy.allows(url) && firstRemotePage) {
+                if (policy.launchEntry(url) != null && firstRemotePage) {
                     webView.clearHistory(); // Never go back to the internal installation screen.
                     firstRemotePage = false;
                 }
-                if (policy.allows(url)) webView.evaluateJavascript(
+                if (policy.launchEntry(url) != null) webView.evaluateJavascript(
                     "window.print=()=>{window.location.href='/app/native-print'};", null);
             }
             @Override public void onReceivedSslError(WebView webView, SslErrorHandler handler, SslError error) {
@@ -113,7 +116,23 @@ public class MainActivity extends BridgeActivity {
                 } finally { if (connection!=null) connection.disconnect(); }
             });
         });
-        view.loadUrl(policy.patientEntry());
+        // BridgeActivity calls onNewIntent during super.onCreate. Publish these
+        // fields only after every WebView security control and client is ready.
+        launchPolicy = policy;
+        appView = view;
+        Intent initial = getIntent();
+        String entry = policy.launchEntry(initial != null && Intent.ACTION_VIEW.equals(initial.getAction())
+                ? initial.getDataString() : null);
+        view.loadUrl(entry != null ? entry : policy.patientEntry());
+    }
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (launchPolicy == null || appView == null || intent == null
+                || !Intent.ACTION_VIEW.equals(intent.getAction())) return;
+        String entry = launchPolicy.launchEntry(intent.getDataString());
+        if (entry == null) return; // Invalid later intents leave the current session and page intact.
+        setIntent(intent);
+        appView.loadUrl(entry); // Never log intent data or private ticket parameters.
     }
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
