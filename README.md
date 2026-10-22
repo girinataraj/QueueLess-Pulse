@@ -1,5 +1,17 @@
 # QueueLess Pulse Universal Edition
 
+## Live Demo & Android App
+
+**Live Web Application:** [https://queueless-pulse-staging-free.onrender.com/app/](https://queueless-pulse-staging-free.onrender.com/app/)
+
+**Android APK:** [Download the signed Android v0.2.1 staging APK](https://github.com/girinataraj/QueueLess-Pulse/releases/download/v0.2.1-android-staging/QueueLess-Pulse-Android-HTTPS-Launch-v0.2.1.apk)
+
+**GitHub Releases:** [QueueLess Pulse Android v0.2.1 — Staging Demo](https://github.com/girinataraj/QueueLess-Pulse/releases/tag/v0.2.1-android-staging)
+
+Render Free hosting can cold-start; allow the application time to wake. Patient and Public Display can be viewed without role login. Reception, Doctor and Owner require authorized accounts. The connected Android app requires internet access; physical-device testing is not yet verified.
+
+Only synthetic demonstration data is used. This staging demo is not approved for real patient information or clinical operations.
+
 A multi-business virtual queue platform for clinics, salons, banks, offices and service centers. The authoritative code is this `DR` root. The older `QueueLess_MVP/` directory is preserved untouched and excluded from the production repository.
 
 ## Four connected experiences
@@ -15,7 +27,7 @@ Shared navy/teal/off-white design and mobile layouts. The React + strict TypeScr
 
 ### Preview with the existing environment
 
-PR #1 established a green **74-test baseline** after the SQLite browser-fixture correction. The React migration adds API, component and PostgreSQL browser verification; see [Frontend verification](docs/FRONTEND_VERIFICATION.md) for current exact results. Hosting is paused for local UI inspection. From this workspace, run:
+PR #1 established a green **74-test baseline** after the SQLite browser-fixture correction. The React migration adds API, component and PostgreSQL browser verification; see [Frontend verification](docs/FRONTEND_VERIFICATION.md) for current exact results. The hosted staging demo is linked above; local preview remains available independently. From this workspace, run:
 
 Local execution logs, JUnit files and screenshots remain in `evidence/`, which is excluded from Git publishing. Reports preserve the verified results and commands; CI can generate fresh evidence as downloadable artifacts.
 
@@ -139,7 +151,7 @@ Sources: [Render Flask](https://render.com/docs/deploy-flask), [Render Free](htt
 
 Main manifest starts at `/`; staff manifest starts at `/staff/dashboard`. Icons are 192/512 PNGs. The root service worker caches **only** CSS and those two icons, cleans obsolete caches and never stores staff, owner, ticket, invitation, HTML or API responses. Live operations require a network. Local browser tests verify manifests/worker/static cache/mobile workflows; actual hosted install prompts and Android behavior require HTTPS verification.
 
-This is a complete shortlist/demo MVP, not a certified critical-service product. Multi-counter operation, APK packaging, payments, push subscriptions and personal customer identity collection are outside scope. Database-backed authentication/queue rate limiting is now implemented. Backups, monitoring, abuse controls and cloud outage/load testing remain operational hardening tasks before wider real-world use.
+This is a complete shortlist/demo MVP, not a certified critical-service product. The signed Android staging APK is linked above. Multi-counter operation, payments, push subscriptions and personal customer identity collection remain outside scope. Database-backed authentication/queue rate limiting is now implemented. Backups, monitoring, abuse controls and cloud outage/load testing remain operational hardening tasks before wider real-world use.
 
 ## React frontend preview and architecture
 
