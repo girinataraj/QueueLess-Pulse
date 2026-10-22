@@ -8,4 +8,4 @@ python-dotenv==1.2.4
 tzdata==2026.5
 
 qrcode[pil]==8.2
-Pillow==12.3.0
+Pillow==13.0.0
